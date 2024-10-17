@@ -1,6 +1,6 @@
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from .schemas import CustomModel
+from app.schemas import CustomModel
 from fastapi import Request
 from pydantic import Field
 
@@ -10,8 +10,7 @@ class ErrorResponse(CustomModel):
     code: str = Field(examples=["example:error"])
 
 
-errors = {
-}
+errors = {}
 
 
 class Abort(Exception):

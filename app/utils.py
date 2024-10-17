@@ -1,8 +1,12 @@
+from app import get_settings
+import aiohttp
 import json
 
-import aiohttp
 
-from app import get_settings
+# Convert datetime to timestamp
+def to_timestamp(date: datetime | None) -> int | None:
+    date = date.replace(tzinfo=timezone.utc) if date else date
+    return int(date.timestamp()) if date else None
 
 
 def dead_response(message="Invalid Request"):
@@ -16,9 +20,7 @@ def response(result, error=None):
 async def make_request(method, params=[]):
     async with aiohttp.ClientSession() as session:
         headers = {"content-type": "text/plain;"}
-        data = json.dumps({
-            "id": "sync", "method": method, "params": params
-        })
+        data = json.dumps({"id": "sync", "method": method, "params": params})
 
         try:
             async with session.post(

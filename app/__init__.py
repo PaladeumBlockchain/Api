@@ -29,10 +29,6 @@ def create_app(init_db: bool = True) -> FastAPI:
     app = FastAPI(
         title="API Docs",
         version="0.1.0",
-        openapi_tags=[
-            {"name": "Auth"},
-            {"name": "User"},
-        ],
         lifespan=lifespan,
     )
 
@@ -50,13 +46,9 @@ def create_app(init_db: bool = True) -> FastAPI:
         errors.validation_handler,
     )
 
-    from .permission import router as permission_router
-    from .user import router as user_router
-    from .auth import router as auth_router
+    # from .user import router as user_router
 
-    app.include_router(permission_router)
-    app.include_router(user_router)
-    app.include_router(auth_router)
+    # app.include_router(user_router)
 
     @app.get("/ping")
     async def ping_pong():
