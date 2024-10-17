@@ -5,7 +5,10 @@ import aiohttp
 import json
 
 
-async def make_request(endpoint: str, requests: list[dict] = []):
+async def make_request(endpoint: str, requests: list[dict] | dict = None):
+    if requests is None:
+        requests = []
+
     async with aiohttp.ClientSession() as session:
         headers = {"content-type": "application/json;"}
         data = json.dumps(requests)
@@ -120,23 +123,23 @@ async def build_movements(settings, inputs, outputs):
     movements = {}
 
     for output in outputs:
-        if output["currency"] not in movements:
-            movements[output["currency"]] = {}
+        currency_movement = movements.setdefault(output["currency"], {})
+        address = output["address"]
+        amount = output["amount"]
 
-        if output["address"] not in movements[output["currency"]]:
-            movements[output["currency"]][output["address"]] = 0
-
-        movements[output["currency"]][output["address"]] += output["amount"]
+        currency_movement.setdefault(address, 0)
+        currency_movement[address] += amount
 
     for input in inputs:
         input_output = input_outputs[input["shortcut"]]
+        currency = input_output["currency"]
+        address = input_output["address"]
+        amount = input_output["amount"]
+        currency_movement = movements[currency]
 
-        if input_output["address"] not in movements[input_output["currency"]]:
-            movements[input_output["currency"]][input_output["address"]] = 0
+        currency_movement.setdefault(address, 0)
 
-        movements[input_output["currency"]][
-            input_output["address"]
-        ] -= input_output["amount"]
+        currency_movement[address] -= amount
 
     for currency in movements:
         movements[currency] = {

@@ -13,7 +13,7 @@ poetry shell
 poetry install
 ```
 
-After that you need to copy [settings.example.toml](docs/settings.example.toml) to root of your project and rename it to `settings.toml` and put your data into it. Same goes for [alembic.example.ini](alembic.example.ini). Rename it to `alembic.ini` and update `sqlalchemy.url` with your database URL.
+After that you need to copy [settings.example.toml](docs/settings.example.toml) to root of your project and rename it to `settings.toml` and put your data into it. Same goes for [alembic.example.ini](alembic.ini). Rename it to `alembic.ini` and update `sqlalchemy.url` with your database URL.
 
 Next step is to initialize database using Alembic (I assume by this point you already have PostgreSQL instance running with database created):
 
