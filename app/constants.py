@@ -1,1 +1,1 @@
-
+DEFAULT_CURRENCY = "PLB"
