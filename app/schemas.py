@@ -1,8 +1,7 @@
-from fastapi.encoders import jsonable_encoder
+from typing import Annotated, TypeVar, Generic
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime, timedelta
 from pydantic import PlainSerializer
-from typing import Annotated
 from app import utils
 
 
@@ -31,6 +30,28 @@ class CustomModel(BaseModel):
         from_attributes=True,
     )
 
-    def serializable_dict(self, **kwargs):
-        default_dict = self.model_dump()
-        return jsonable_encoder(default_dict)
+
+class PaginationDataResponse(CustomModel):
+    total: int
+    pages: int
+    page: int
+
+
+T = TypeVar("T", bound=CustomModel)
+
+
+class PaginatedResponse(CustomModel, Generic[T]):
+    pagination: PaginationDataResponse
+    list: list[T]
+
+
+class TransactionResponse(CustomModel):
+    height: int
+    blockhash: str
+    timestamp: int
+    txid: str
+    amount: dict[str, float]
+
+
+TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
+

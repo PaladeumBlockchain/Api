@@ -1,6 +1,6 @@
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from .database import sessionmanager
 import fastapi.openapi.utils as fu
 from .settings import get_settings
@@ -17,9 +17,9 @@ def create_app(init_db: bool = True) -> FastAPI:
         sessionmanager.init(settings.database.endpoint)
 
         @asynccontextmanager
-        async def lifespan(app: FastAPI):
+        async def lifespan(_: FastAPI):
             yield
-            if sessionmanager._engine is not None:
+            with suppress(Exception):
                 await sessionmanager.close()
 
     fu.validation_error_response_definition = (
@@ -30,10 +30,14 @@ def create_app(init_db: bool = True) -> FastAPI:
         title="API Docs",
         version="0.1.0",
         lifespan=lifespan,
+        openapi_tags=[
+            {"name": "Blocks"},
+            {"name": "Transactions"},
+        ]
     )
 
     app.add_middleware(
-        CORSMiddleware,
+        CORSMiddleware,  # type: ignore
         allow_origins=settings.backend.origins,
         allow_credentials=True,
         allow_methods=["*"],
@@ -46,9 +50,11 @@ def create_app(init_db: bool = True) -> FastAPI:
         errors.validation_handler,
     )
 
-    # from .user import router as user_router
+    from .transactions import router as db_router
+    from .blocks import router as blocks_router
 
-    # app.include_router(user_router)
+    app.include_router(blocks_router)
+    app.include_router(db_router)
 
     @app.get("/ping")
     async def ping_pong():

@@ -23,15 +23,11 @@ def build_error_code(scope: str, message: str):
     return scope.replace("-", "_") + ":" + message.replace("-", "_")
 
 
-async def abort_handler(request: Request, exception: Abort):
+def abort_handler(_: Request, exception: Abort | Exception) -> JSONResponse:
     error_code = build_error_code(exception.scope, exception.message)
 
-    try:
-        error_message = errors[exception.scope][exception.message][0]
-        status_code = errors[exception.scope][exception.message][1]
-    except Exception:
-        error_message = "Unknown error"
-        status_code = 400
+    error_message = errors.get(exception.scope, {}).get(exception.message, ("Unknown error",))[0]
+    status_code = errors.get(exception.scope, {}).get(exception.message, (None, 400))[1]
 
     return JSONResponse(
         status_code=status_code,
@@ -43,8 +39,8 @@ async def abort_handler(request: Request, exception: Abort):
 
 
 async def validation_handler(
-    request: Request, exception: RequestValidationError
-):
+    _: Request, exception: RequestValidationError | Exception
+) -> JSONResponse:
     error_message = str(exception).replace("\n", " ").replace("   ", " ")
     return JSONResponse(
         status_code=400,

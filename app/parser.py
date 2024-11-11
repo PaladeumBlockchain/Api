@@ -17,12 +17,13 @@ async def make_request(endpoint: str, requests: list[dict] | dict = None):
             async with session.post(endpoint, headers=headers, data=data) as r:
                 return await r.json()
         except Exception:
-            return None
+            raise
 
 
 def parse_meta(spk):
     if spk["type"] in ["new_token", "reissue_token"]:
         return {
+            "type": spk["type"],
             "amount": spk["token"]["amount"],
             "name": spk["token"]["name"],
             "units": (
@@ -130,7 +131,7 @@ async def build_movements(settings, inputs, outputs):
         currency_movement.setdefault(address, 0)
         currency_movement[address] += amount
 
-    for input in inputs:
+    for input in inputs:  # noqa
         input_output = input_outputs[input["shortcut"]]
         currency = input_output["currency"]
         address = input_output["address"]
@@ -226,7 +227,9 @@ async def parse_block(height: int):
 
     block_data = block_data_result["result"]
 
-    transactions_data = await parse_transactions(block_data["tx"])
+    transactions_data = await parse_transactions(
+        [] if height == 0 else block_data["tx"]
+    )
 
     result["transactions"] = transactions_data["transactions"]
     result["outputs"] = transactions_data["outputs"]

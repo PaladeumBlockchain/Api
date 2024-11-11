@@ -18,3 +18,7 @@ class Block(Base):
     prev_blockhash: Mapped[str] = mapped_column(
         String(64), index=True, nullable=True
     )
+
+    @property
+    def tx(self) -> int:
+        return len(self.transactions)
