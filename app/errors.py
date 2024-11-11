@@ -26,8 +26,12 @@ def build_error_code(scope: str, message: str):
 def abort_handler(_: Request, exception: Abort | Exception) -> JSONResponse:
     error_code = build_error_code(exception.scope, exception.message)
 
-    error_message = errors.get(exception.scope, {}).get(exception.message, ("Unknown error",))[0]
-    status_code = errors.get(exception.scope, {}).get(exception.message, (None, 400))[1]
+    error_message = errors.get(exception.scope, {}).get(
+        exception.message, ("Unknown error",)
+    )[0]
+    status_code = errors.get(exception.scope, {}).get(
+        exception.message, (None, 400)
+    )[1]
 
     return JSONResponse(
         status_code=status_code,

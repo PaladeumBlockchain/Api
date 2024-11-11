@@ -5,6 +5,7 @@ from sqlalchemy import Numeric, String
 
 from .base import Base
 
+
 class Token(Base):
     __tablename__ = "service_tokens"
 

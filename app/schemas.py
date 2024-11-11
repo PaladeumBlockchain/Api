@@ -54,4 +54,3 @@ class TransactionResponse(CustomModel):
 
 
 TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
-

@@ -9,9 +9,8 @@ from app.transactions import service
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
-@router.get(
-    "/{token}", response_model=TransactionPaginatedResponse
-)
+
+@router.get("/{token}", response_model=TransactionPaginatedResponse)
 async def get_transactions(
     token: str = "PLB",
     page: int = Depends(get_page),

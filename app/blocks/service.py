@@ -28,7 +28,9 @@ async def get_block_by_hash(session: AsyncSession, hash_: str) -> Block:
 
 async def count_block_transactions(session: AsyncSession, hash_: str):
     return await session.scalar(
-        select(func.count(Transaction.id)).filter(Transaction.blockhash == hash_)
+        select(func.count(Transaction.id)).filter(
+            Transaction.blockhash == hash_
+        )
     )
 
 

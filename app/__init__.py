@@ -33,7 +33,7 @@ def create_app(init_db: bool = True) -> FastAPI:
         openapi_tags=[
             {"name": "Blocks"},
             {"name": "Transactions"},
-        ]
+        ],
     )
 
     app.add_middleware(

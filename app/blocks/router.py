@@ -62,4 +62,3 @@ async def get_block_transactions(
         page=page,
         limit=limit,
     )
-
