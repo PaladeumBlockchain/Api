@@ -52,7 +52,9 @@ def create_app(init_db: bool = True) -> FastAPI:
 
     from .transactions import router as db_router
     from .blocks import router as blocks_router
+    from .address import router as address_router
 
+    app.include_router(address_router)
     app.include_router(blocks_router)
     app.include_router(db_router)
 

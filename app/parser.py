@@ -1,3 +1,4 @@
+from app.address.service import transactions_filters
 from app.settings import get_settings
 from datetime import datetime
 from app import constants
@@ -174,9 +175,18 @@ async def parse_transactions(txids: list[str]):
     for transaction_result in transactions_result:
         transaction_data = transaction_result["result"]
 
+        addresses = list(
+            set(
+                address
+                for vout in transaction_data["vout"]
+                for address in vout["scriptPubKey"].get("addresses", [])
+            )
+        )
+
         transactions.append(
             {
                 "created": datetime.fromtimestamp(transaction_data["time"]),
+                "addresses": addresses,
                 "blockhash": transaction_data["blockhash"],
                 "locktime": transaction_data["locktime"],
                 "version": transaction_data["version"],

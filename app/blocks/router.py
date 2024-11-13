@@ -16,7 +16,7 @@ async def latest_block(session: AsyncSession = Depends(get_session)):
     return await service.get_latest_block(session)
 
 
-@router.get("/blocks", response_model=BlockPaginatedResponse)
+@router.get("/", response_model=BlockPaginatedResponse)
 async def get_blocks(
     page: int = Depends(get_page), session: AsyncSession = Depends(get_session)
 ):
@@ -33,7 +33,7 @@ async def get_blocks(
     )
 
 
-@router.get("/blocks/{hash_}", response_model=BlockResponse)
+@router.get("/{hash_}", response_model=BlockResponse)
 async def get_block(
     hash_: str,
     session: AsyncSession = Depends(get_session),
@@ -42,7 +42,7 @@ async def get_block(
 
 
 @router.get(
-    "/blocks/{hash_}/transactions", response_model=TransactionPaginatedResponse
+    "/{hash_}/transactions", response_model=TransactionPaginatedResponse
 )
 async def get_block_transactions(
     hash_: str,

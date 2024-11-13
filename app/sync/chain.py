@@ -85,6 +85,7 @@ async def process_block(session: AsyncSession, data: dict):
                     "locktime": transaction_data["locktime"],
                     "version": transaction_data["version"],
                     "timestamp": transaction_data["timestamp"],
+                    "addresses": transaction_data["addresses"],
                     "size": transaction_data["size"],
                     "txid": transaction_data["txid"],
                     "currencies": transaction_currencies[

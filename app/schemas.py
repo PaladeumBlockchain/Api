@@ -54,3 +54,16 @@ class TransactionResponse(CustomModel):
 
 
 TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
+
+
+class OutputResponse(CustomModel):
+    txid: str
+    currency: str
+    amount: float
+    timelock: int
+    type: str
+    spent: bool
+    index: int
+
+
+OutputPaginatedResponse = PaginatedResponse[OutputResponse]

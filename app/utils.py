@@ -25,6 +25,7 @@ def token_type(name):
 
 # Helper function for pagination
 def pagination(page, size=constants.DEFAULT_PAGINATION_SIZE):
+    """limit, offset = pagination(:page, :page_size)"""
     offset = (size * page) - size
 
     return size, offset
@@ -43,6 +44,6 @@ def paginated_response(
     items: Sequence, total: int, page: int, limit: int
 ) -> dict:
     return {
-        "list": items,
         "pagination": pagination_dict(total, page, limit),
+        "list": items,
     }

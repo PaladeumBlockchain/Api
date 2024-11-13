@@ -27,3 +27,10 @@ async def get_transactions(
         page=page,
         limit=limit,
     )
+
+
+@router.post("/broadcast")
+async def broadcast_transaction(
+    raw: str,
+):
+    return await service.broadcast_transaction(raw)

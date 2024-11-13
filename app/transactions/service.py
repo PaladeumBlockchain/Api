@@ -1,7 +1,9 @@
 from sqlalchemy import select, Select, func, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import get_settings
 from app.models import Transaction
+from app.parser import make_request
 
 
 def transactions_filter(query: Select, currency: str) -> Select:
@@ -25,4 +27,13 @@ async def get_transactions(
             .limit(limit),
             currency,
         )
+    )
+
+
+async def broadcast_transaction(raw: str):
+    settings = get_settings()
+
+    return await make_request(
+        settings.blockchain.endpoint,
+        {"id": "broadcast", "method": "sendrawtransaction", "params": [raw]},
     )
