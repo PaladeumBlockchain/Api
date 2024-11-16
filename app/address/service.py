@@ -4,43 +4,40 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Output, Transaction
 
 
-def outputs_filters(
-    query: Select, address: str, currency, spent: bool
+def unspent_outputs_filters(
+    query: Select, address: str, currency
 ) -> Select:
     query = query.filter(
         Output.address == address,
         func.lower(Output.currency) == currency.lower(),  # type: ignore
-        Output.spent == spent,
     )
 
     return query
 
 
-async def count_outputs(
-    session: AsyncSession, address: str, currency: str, spent: bool
+async def count_unspent_outputs(
+    session: AsyncSession, address: str, currency: str
 ) -> int:
     return await session.scalar(
-        outputs_filters(select(func.count(Output.id)), address, currency, spent)
+        unspent_outputs_filters(select(func.count(Output.id)), address, currency)
     )
 
 
-async def list_outputs(
+async def list_unspent_outputs(
     session: AsyncSession,
     address: str,
     currency: str,
-    spent: bool,
     limit: int,
     offset: int,
 ) -> ScalarResult[Output]:
     return await session.scalars(
-        outputs_filters(
+        unspent_outputs_filters(
             select(Output)
             .order_by(Output.amount.desc())
             .limit(limit)
             .offset(offset),
             address,
             currency,
-            spent,
         )
     )
 
