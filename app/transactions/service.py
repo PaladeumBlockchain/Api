@@ -6,6 +6,14 @@ from app.models import Transaction
 from app.parser import make_request
 
 
+async def get_transaction_by_txid(
+    session: AsyncSession, txid: str
+) -> Transaction:
+    return await session.scalar(
+        select(Transaction).filter(Transaction.txid == txid)
+    )
+
+
 def transactions_filter(query: Select, currency: str) -> Select:
     return query.filter(Transaction.currencies.contains([currency.upper()]))
 

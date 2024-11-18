@@ -1,8 +1,12 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Sequence
 import math
 
 from app import constants
+
+
+def utcnow():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 # Convert datetime to timestamp
@@ -31,7 +35,7 @@ def pagination(page, size=constants.DEFAULT_PAGINATION_SIZE):
     return size, offset
 
 
-# Helper function to make pagication dict for api
+# Helper function to make pagination dict for api
 def pagination_dict(total, page, limit):
     return {
         "pages": math.ceil(total / limit),

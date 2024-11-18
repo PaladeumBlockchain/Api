@@ -4,9 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Output, Transaction
 
 
-def unspent_outputs_filters(
-    query: Select, address: str, currency
-) -> Select:
+def unspent_outputs_filters(query: Select, address: str, currency) -> Select:
     query = query.filter(
         Output.address == address,
         func.lower(Output.currency) == currency.lower(),  # type: ignore
@@ -19,7 +17,9 @@ async def count_unspent_outputs(
     session: AsyncSession, address: str, currency: str
 ) -> int:
     return await session.scalar(
-        unspent_outputs_filters(select(func.count(Output.id)), address, currency)
+        unspent_outputs_filters(
+            select(func.count(Output.id)), address, currency
+        )
     )
 
 

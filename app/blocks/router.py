@@ -4,16 +4,18 @@ from fastapi import APIRouter, Depends
 from .schemas import BlockPaginatedResponse, BlockResponse
 from app.schemas import TransactionPaginatedResponse
 from app.utils import pagination, paginated_response
+from .dependencies import require_latest_block, require_block
 from app.dependencies import get_page
 from app.database import get_session
+from app.models import Block
 from . import service
 
 router = APIRouter(prefix="/blocks", tags=["Blocks"])
 
 
 @router.get("/latest", response_model=BlockResponse)
-async def latest_block(session: AsyncSession = Depends(get_session)):
-    return await service.get_latest_block(session)
+async def latest_block(block: Block = Depends(require_latest_block)):
+    return block
 
 
 @router.get("/", response_model=BlockPaginatedResponse)
@@ -34,11 +36,8 @@ async def get_blocks(
 
 
 @router.get("/{hash_}", response_model=BlockResponse)
-async def get_block(
-    hash_: str,
-    session: AsyncSession = Depends(get_session),
-):
-    return await service.get_block_by_hash(session, hash_)
+async def get_block(block: Block = Depends(require_block)):
+    return block
 
 
 @router.get(

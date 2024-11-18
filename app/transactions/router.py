@@ -1,16 +1,18 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
 
-from app.schemas import TransactionPaginatedResponse
+from app.schemas import TransactionPaginatedResponse, TransactionResponse
 from app.utils import pagination, paginated_response
+from .dependencies import require_transaction
 from app.dependencies import get_page
 from app.database import get_session
-from app.transactions import service
+from app.models import Transaction
+from . import service
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
-@router.get("/{token}", response_model=TransactionPaginatedResponse)
+@router.get("/list/{token}", response_model=TransactionPaginatedResponse)
 async def get_transactions(
     token: str = "PLB",
     page: int = Depends(get_page),
@@ -27,6 +29,13 @@ async def get_transactions(
         page=page,
         limit=limit,
     )
+
+
+@router.get("/{txid}", response_model=TransactionResponse)
+async def get_transaction_info(
+    transaction: Transaction = Depends(require_transaction),
+):
+    return transaction
 
 
 @router.post("/broadcast")

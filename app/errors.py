@@ -10,7 +10,10 @@ class ErrorResponse(CustomModel):
     code: str = Field(examples=["example:error"])
 
 
-errors = {}
+errors = {
+    "transactions": {"not-found": ("Transaction not found", 404)},
+    "blocks": {"not-found": ("Block not found", 404)},
+}
 
 
 class Abort(Exception):
