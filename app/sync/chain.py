@@ -167,6 +167,31 @@ async def process_reorg(session: AsyncSession, block: Block):
     reorg_height = block.height
     movements = block.movements
 
+    outputs = await session.scalars(
+        select(Output)
+        .filter(
+            Output.blockhash == block.blockhash, Output.meta.ilike("%_token%")
+        )
+        .order_by(Output.index.asc())
+    )
+    for output in outputs:
+        if not output.meta:
+            continue
+
+        meta = output.meta
+        match meta["type"]:
+            case "new_token":
+                await session.execute(
+                    delete(Token).filter(Token.name == meta["name"])
+                )
+            case "reissue_token":
+                token = await session.scalar(
+                    select(Token).filter(Token.name == meta["name"])
+                )
+                token.amount -= Decimal(meta["amount"])
+                token.units = meta["units"]
+                token.reissuable = meta["reissuable"]
+
     await session.execute(
         delete(Output).filter(Output.blockhash == block.blockhash)
     )

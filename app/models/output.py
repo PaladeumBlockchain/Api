@@ -1,3 +1,4 @@
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapped
 from sqlalchemy import Numeric
@@ -19,3 +20,5 @@ class Output(Base):
     type: Mapped[str] = mapped_column(String(64), index=True)
     spent: Mapped[bool]
     index: Mapped[int]
+
+    meta: Mapped[dict] = mapped_column(JSONB)
