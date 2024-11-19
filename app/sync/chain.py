@@ -1,5 +1,5 @@
 from sqlalchemy.orm import with_loader_criteria, joinedload
-from sqlalchemy import select, update, delete, desc
+from sqlalchemy import select, update, delete, desc, text
 
 from app.parser import make_request, parse_block
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,6 +71,7 @@ async def process_block(session: AsyncSession, data: dict):
                     "type": output_data["type"],
                     "spent": output_data["spent"],
                     "index": output_data["index"],
+                    "meta": output_data["meta"],
                 }
             )
         )
@@ -170,10 +171,15 @@ async def process_reorg(session: AsyncSession, block: Block):
     outputs = await session.scalars(
         select(Output)
         .filter(
-            Output.blockhash == block.blockhash, Output.meta.ilike("%_token%")
+            Output.blockhash == block.blockhash,
+            Output.meta.op("->>")(text("'type'")).in_(
+                ["new_token", "reissue_token"]
+            ),
         )
         .order_by(Output.index.asc())
     )
+    removed_currencies = []
+
     for output in outputs:
         if not output.meta:
             continue
@@ -184,6 +190,7 @@ async def process_reorg(session: AsyncSession, block: Block):
                 await session.execute(
                     delete(Token).filter(Token.name == meta["name"])
                 )
+                removed_currencies.append(meta["name"])
             case "reissue_token":
                 token = await session.scalar(
                     select(Token).filter(Token.name == meta["name"])
@@ -191,6 +198,12 @@ async def process_reorg(session: AsyncSession, block: Block):
                 token.amount -= Decimal(meta["amount"])
                 token.units = meta["units"]
                 token.reissuable = meta["reissuable"]
+
+    await session.execute(
+        delete(AddressBalance).filter(
+            AddressBalance.currency.in_(removed_currencies)
+        )
+    )
 
     await session.execute(
         delete(Output).filter(Output.blockhash == block.blockhash)
@@ -210,6 +223,9 @@ async def process_reorg(session: AsyncSession, block: Block):
 
     for currency, movement in movements.items():
         for raw_address, amount in movement.items():
+            if currency in removed_currencies:
+                continue
+
             balance = await session.scalar(
                 select(AddressBalance).filter(
                     AddressBalance.currency == currency,
@@ -218,7 +234,7 @@ async def process_reorg(session: AsyncSession, block: Block):
                 )
             )
 
-            balance -= amount
+            balance.balance -= Decimal(amount)
 
     new_latest = await session.scalar(
         select(Block).filter(Block.height == reorg_height - 1)
