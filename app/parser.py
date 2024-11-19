@@ -1,4 +1,3 @@
-from app.address.service import transactions_filters
 from app.settings import get_settings
 from datetime import datetime
 from app import constants

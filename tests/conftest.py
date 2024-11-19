@@ -133,4 +133,3 @@ async def address_transaction(session, address) -> Transaction:
     return await helpers.create_transaction(
         session, addresses=[address.address]
     )
-

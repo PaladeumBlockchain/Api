@@ -15,7 +15,7 @@ async def create_transaction(
     version: int = 1,
     amount: dict[str, float] = None,
     blockhash: str = None,
-        addresses: list[str] = None,
+    addresses: list[str] = None,
 ) -> Transaction:
     if currencies is None:
         currencies = ["PLB"]
@@ -96,13 +96,13 @@ async def create_output(
     currency: str = "PLB",
     shortcut: str = "aabbccddeeff0011223344",
     blockhash: str = None,
-        address: str = None,
-        txid: str = None,
-        amount: float = 10.0,
-        timelock: int = 0,
-        type: str = "new_token",
-        spent: bool = False,
-        index: int = 1
+    address: str = None,
+    txid: str = None,
+    amount: float = 10.0,
+    timelock: int = 0,
+    type: str = "new_token",
+    spent: bool = False,
+    index: int = 1,
 ):
     output = Output(
         currency=currency,
@@ -114,7 +114,7 @@ async def create_output(
         timelock=timelock,
         type=type,
         spent=spent,
-        index=index
+        index=index,
     )
 
     session.add(output)

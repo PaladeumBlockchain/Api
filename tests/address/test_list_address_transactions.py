@@ -1,5 +1,6 @@
 from tests.client_requests import addresses
 
+
 async def test_normal(client, address_transaction):
     response = await addresses.get_address_transactions(
         client=client,
