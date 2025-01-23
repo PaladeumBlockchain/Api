@@ -41,7 +41,9 @@ async def load_tx_details(
 
         output_shortcuts[output.shortcut] = output
         transaction.outputs.append(output)
-        transaction.fee -= output.amount
+
+        if output.currency == "PLB":
+            transaction.fee -= output.amount
 
     transaction.inputs = []
     for input_ in await session.scalars(
@@ -57,7 +59,9 @@ async def load_tx_details(
         input_.address = output.address
 
         transaction.inputs.append(input_)
-        transaction.fee += output.amount
+
+        if output.currency == "PLB":
+            transaction.fee += output.amount
 
     return transaction
 
