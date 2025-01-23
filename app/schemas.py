@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime, timedelta
 from pydantic import PlainSerializer
 from app import utils
+import math
 
 
 # Custom Pydantic serializers
@@ -20,6 +21,14 @@ timedelta_pd = Annotated[
         lambda x: int(x.total_seconds()),
         return_type=int,
     ),
+]
+
+Satoshi = Annotated[
+    float,
+    PlainSerializer(
+        lambda x: int(x * math.pow(10, 8)),
+        return_type=int,
+    )
 ]
 
 
@@ -45,18 +54,8 @@ class PaginatedResponse(CustomModel, Generic[T]):
     list: list[T]
 
 
-class TransactionResponse(CustomModel):
-    height: int
-    blockhash: str
-    timestamp: int
-    txid: str
-    amount: dict[str, float]
-
-
-TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
-
-
 class OutputResponse(CustomModel):
+    address: str
     txid: str
     currency: str
     amount: float
@@ -67,3 +66,35 @@ class OutputResponse(CustomModel):
 
 
 OutputPaginatedResponse = PaginatedResponse[OutputResponse]
+
+
+class OutputFullResponse(OutputResponse):
+    units: int
+
+
+class InputFullResponse(CustomModel):
+    amount: Satoshi
+    units: int
+    currency: str
+    address: str
+
+
+class TransactionResponse(CustomModel):
+    height: int
+    blockhash: str
+    timestamp: int
+    txid: str
+    amount: dict[str, Satoshi]
+    outputs: list[OutputFullResponse]
+    inputs: list[InputFullResponse]
+    confirmations: int
+    fee: Satoshi
+
+
+TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
+
+
+class BalanceResponse(CustomModel):
+    currency: str
+    balance: Satoshi
+

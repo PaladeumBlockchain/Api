@@ -1,13 +1,15 @@
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app import sessionmanager, get_settings
+from app.sync import sync_chain
 from datetime import datetime
 import asyncio
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.sync import sync_chain
-
-
-def init_scheduler():
+async def main():
     scheduler = AsyncIOScheduler()
+    settings = get_settings()
+
+    sessionmanager.init(settings.database.endpoint)
 
     scheduler.add_job(
         sync_chain, "interval", minutes=1, next_run_time=datetime.now()
@@ -16,10 +18,11 @@ def init_scheduler():
     scheduler.start()
 
     try:
-        asyncio.get_event_loop().run_forever()
-    except (KeyboardInterrupt, SystemExit):
-        pass
+        while True:
+            await asyncio.sleep(3600)
+    finally:
+        await sessionmanager.close()
 
 
 if __name__ == "__main__":
-    init_scheduler()
+    asyncio.run(main())

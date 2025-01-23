@@ -1,7 +1,8 @@
+from app.models import Output, Transaction, AddressBalance, Address
 from sqlalchemy import Select, select, func, ScalarResult
+from app.transactions.service import load_tx_details
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Output, Transaction
+from app.blocks.service import get_latest_block
 
 
 def unspent_outputs_filters(query: Select, address: str, currency) -> Select:
@@ -56,8 +57,10 @@ async def count_transactions(session: AsyncSession, address: str):
 
 async def list_transactions(
     session: AsyncSession, address: str, limit: int, offset: int
-):
-    return await session.scalars(
+) -> list[Transaction]:
+    latest_block = await get_latest_block(session)
+    transactions = []
+    for transaction in await session.scalars(
         transactions_filters(
             select(Transaction)
             .order_by(Transaction.created.desc())
@@ -65,4 +68,17 @@ async def list_transactions(
             .offset(offset),
             address,
         )
+    ):
+        transactions.append(
+            await load_tx_details(session, transaction, latest_block)
+        )
+
+    return transactions
+
+
+async def list_balances(
+        session: AsyncSession, address: str
+) -> ScalarResult[AddressBalance]:
+    return await session.scalars(
+        select(AddressBalance).filter(AddressBalance.address_id == Address.id, Address.address == address)
     )

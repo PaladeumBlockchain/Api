@@ -24,7 +24,7 @@ async def get_transactions(
     transactions = await service.get_transactions(session, token, offset, limit)
 
     return paginated_response(
-        transactions.all(),
+        transactions,
         total=total,
         page=page,
         limit=limit,

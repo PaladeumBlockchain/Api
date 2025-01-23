@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.params import Depends
 from fastapi import APIRouter
 
-from app.schemas import OutputPaginatedResponse, TransactionPaginatedResponse
+from app.schemas import OutputPaginatedResponse, TransactionPaginatedResponse, BalanceResponse
 from app.utils import pagination, paginated_response
 from app.dependencies import get_page
 from app.database import get_session
@@ -43,4 +43,14 @@ async def get_transactions(
     total = await service.count_transactions(session, address)
     items = await service.list_transactions(session, address, limit, offset)
 
-    return paginated_response(items.all(), total, page, limit)
+    return paginated_response(items, total, page, limit)
+
+
+@router.get(
+    "/{address}/balances", response_model=list[BalanceResponse]
+)
+async def get_balances(
+        address: str,
+        session: AsyncSession = Depends(get_session),
+):
+    return await service.list_balances(session, address)

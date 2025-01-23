@@ -1,10 +1,10 @@
 from sqlalchemy.orm import with_loader_criteria, joinedload
 from sqlalchemy import select, update, delete, desc, text
-
 from app.parser import make_request, parse_block
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import sessionmanager
 from app.settings import get_settings
+from app.utils import token_type
 from decimal import Decimal
 
 from app.models import (
@@ -16,7 +16,6 @@ from app.models import (
     Input,
     Block,
 )
-from app.utils import token_type
 
 
 async def process_block(session: AsyncSession, data: dict):
@@ -245,8 +244,6 @@ async def process_reorg(session: AsyncSession, block: Block):
 
 async def sync_chain():
     settings = get_settings()
-
-    sessionmanager.init(settings.database.endpoint)
 
     async with sessionmanager.session() as session:
         latest = await session.scalar(
