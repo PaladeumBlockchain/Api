@@ -5,6 +5,7 @@ config.py
 alembic.ini
 settings.toml
 .venv
+playground.py
 
 # Linters
 .pytest_cache

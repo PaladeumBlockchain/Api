@@ -128,37 +128,31 @@ async def process_block(session: AsyncSession, data: dict):
 
     for currency, movement in data["block"]["movements"].items():
         for raw_address, amount in movement.items():
-            # Get address from database with loaded balance with required currency
-            address = await session.scalar(
-                select(Address)
-                .filter(Address.address == raw_address)
-                .options(
-                    joinedload(Address.balances),
-                    with_loader_criteria(
-                        AddressBalance, AddressBalance.currency == currency
-                    ),
+            if not (
+                address := await session.scalar(
+                    select(Address).filter(Address.address == raw_address)
                 )
-            )
-
-            # If address not exists - create new one
-            if not address:
-                address = Address(
-                    address=raw_address,
-                    balances=[],
-                )
+            ):
+                address = Address(address=raw_address)
                 session.add(address)
 
-            # If balance not exists - create new one
-            if not address.balances:
+            if not (
+                balance := await session.scalar(
+                    select(AddressBalance).filter(
+                        AddressBalance.currency == currency,
+                        AddressBalance.address == address,
+                    )
+                )
+            ):
                 balance = AddressBalance(
                     balance=Decimal(0.0),  # type: ignore
                     currency=currency,
                     address=address,
                 )
-                address.balances.append(balance)
+
                 session.add(balance)
 
-            address.balances[0].balance += Decimal(amount)
+            balance.balance += Decimal(amount)
 
     return block
 
