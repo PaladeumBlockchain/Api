@@ -1,4 +1,3 @@
-from sqlalchemy.orm import with_loader_criteria, joinedload
 from sqlalchemy import select, update, delete, desc, text
 from app.parser import make_request, parse_block
 from sqlalchemy.ext.asyncio import AsyncSession
