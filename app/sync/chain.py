@@ -296,5 +296,3 @@ async def sync_chain():
             except KeyboardInterrupt:
                 print("Keyboard interrupt")
                 break
-
-    await sessionmanager.close()

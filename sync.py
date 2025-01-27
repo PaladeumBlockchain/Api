@@ -12,7 +12,7 @@ async def main():
     sessionmanager.init(settings.database.endpoint)
 
     scheduler.add_job(
-        sync_chain, "interval", minutes=1, next_run_time=datetime.now()
+        sync_chain, "interval", seconds=10, next_run_time=datetime.now()
     )
 
     scheduler.start()
