@@ -36,10 +36,19 @@ async def count_block_transactions(session: AsyncSession, hash_: str):
 
 async def get_block_transactions(
     session: AsyncSession, hash_: str, offset: int, limit: int
-) -> ScalarResult[Transaction]:
-    return await session.scalars(
+) -> list[Transaction]:
+    from app.transactions.service import load_tx_details
+
+    latest_block = await get_latest_block(session)
+    transactions = []
+    for transaction in await session.scalars(
         select(Transaction)
         .filter(Transaction.blockhash == hash_)
         .offset(offset)
         .limit(limit),
-    )
+    ):
+        transactions.append(
+            await load_tx_details(session, transaction, latest_block)
+        )
+
+    return transactions

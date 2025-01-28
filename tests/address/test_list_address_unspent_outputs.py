@@ -1,3 +1,4 @@
+from app.utils import to_satoshi
 from tests.client_requests import addresses
 
 
@@ -14,7 +15,7 @@ async def test_normal(client, address_utxo):
 
     assert utxo["txid"] == address_utxo.txid
     assert utxo["currency"] == address_utxo.currency
-    assert utxo["amount"] == address_utxo.amount
+    assert utxo["amount"] == to_satoshi(address_utxo.amount)  # type: ignore
     assert utxo["timelock"] == address_utxo.timelock
     assert utxo["type"] == address_utxo.type
     assert utxo["spent"] == address_utxo.spent

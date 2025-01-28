@@ -113,6 +113,7 @@ async def create_output(
         amount=amount,  # type: ignore
         timelock=timelock,
         type=type,
+        meta={},
         spent=spent,
         index=index,
     )

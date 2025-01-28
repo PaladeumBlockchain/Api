@@ -1,6 +1,6 @@
 from app.models import Output, Transaction, AddressBalance, Address
 from sqlalchemy import Select, select, func, ScalarResult
-from app.transactions.service import load_tx_details
+from app.transactions.service import load_tx_details, get_token_units
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.blocks.service import get_latest_block
 
@@ -77,8 +77,16 @@ async def list_transactions(
 
 
 async def list_balances(
-        session: AsyncSession, address: str
-) -> ScalarResult[AddressBalance]:
-    return await session.scalars(
-        select(AddressBalance).filter(AddressBalance.address_id == Address.id, Address.address == address)
-    )
+    session: AsyncSession, address: str
+) -> list[AddressBalance]:
+    balances = []
+    for balance in await session.scalars(
+        select(AddressBalance).filter(
+            AddressBalance.address_id == Address.id, Address.address == address
+        )
+    ):
+        balance.units = await get_token_units(session, balance.currency)
+
+        balances.append(balance)
+
+    return balances

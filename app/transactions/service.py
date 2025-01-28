@@ -19,8 +19,14 @@ async def get_token_units(session: AsyncSession, currency: str) -> int:
 
 
 async def load_tx_details(
-    session: AsyncSession, transaction: Transaction, latest_block: Block = None
-):
+    session: AsyncSession,
+    transaction: Transaction | None,
+    latest_block: Block = None,
+) -> Transaction | None:
+
+    if transaction is None:
+        return transaction
+
     if latest_block is None:
         latest_block = await get_latest_block(session)
 
@@ -103,7 +109,9 @@ async def get_transactions(
         )
     ):
         transactions.append(
-            await load_tx_details(session, transaction, latest_block=latest_block)
+            await load_tx_details(
+                session, transaction, latest_block=latest_block
+            )
         )
 
     return transactions

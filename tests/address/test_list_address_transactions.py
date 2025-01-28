@@ -1,7 +1,8 @@
 from tests.client_requests import addresses
+from app.utils import to_satoshi
 
 
-async def test_normal(client, address_transaction):
+async def test_normal(client, block, address_transaction):
     response = await addresses.get_address_transactions(
         client=client,
         address=address_transaction.addresses[0],
@@ -14,7 +15,10 @@ async def test_normal(client, address_transaction):
     transaction_data = response.json()["list"][0]
 
     assert transaction_data["blockhash"] == address_transaction.blockhash
-    assert transaction_data["amount"] == address_transaction.amount
+    assert transaction_data["amount"] == {
+        token: to_satoshi(amount)
+        for token, amount in address_transaction.amount.items()
+    }
     assert transaction_data["height"] == address_transaction.height
     assert transaction_data["txid"] == address_transaction.txid
 

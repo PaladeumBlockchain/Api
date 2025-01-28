@@ -9,6 +9,7 @@ from .blocks import get_block
 
 from .addresses import get_unspent_address_outputs
 from .addresses import get_address_transactions
+from .addresses import get_address_balances
 
 from . import transactions
 from . import addresses
@@ -32,4 +33,5 @@ __all__ = [
     # ------ Addresses
     "get_unspent_address_outputs",
     "get_address_transactions",
+    "get_address_balances",
 ]

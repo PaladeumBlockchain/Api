@@ -56,7 +56,7 @@ async def get_block_transactions(
     )
 
     return paginated_response(
-        transactions.all(),
+        transactions,
         total=total,
         page=page,
         limit=limit,

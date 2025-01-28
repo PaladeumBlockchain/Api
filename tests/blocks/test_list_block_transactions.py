@@ -1,4 +1,5 @@
 from tests.client_requests import blocks
+from app.utils import to_satoshi
 
 
 async def test_normal(client, block_transaction):
@@ -13,7 +14,10 @@ async def test_normal(client, block_transaction):
     transaction_data = response.json()["list"][0]
 
     assert transaction_data["blockhash"] == block_transaction.blockhash
-    assert transaction_data["amount"] == block_transaction.amount
+    assert transaction_data["amount"] == {
+        token: to_satoshi(amount)
+        for token, amount in block_transaction.amount.items()
+    }
     assert transaction_data["height"] == block_transaction.height
     assert transaction_data["txid"] == block_transaction.txid
 

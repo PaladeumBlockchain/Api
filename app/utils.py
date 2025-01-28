@@ -51,3 +51,7 @@ def paginated_response(
         "pagination": pagination_dict(total, page, limit),
         "list": items,
     }
+
+
+def to_satoshi(x: float) -> int:
+    return int(x * math.pow(10, 8))
