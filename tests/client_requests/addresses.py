@@ -1,5 +1,5 @@
-from async_asgi_testclient import TestClient
 from async_asgi_testclient.response import Response
+from async_asgi_testclient import TestClient
 
 
 async def get_unspent_address_outputs(

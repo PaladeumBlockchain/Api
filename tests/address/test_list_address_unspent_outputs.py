@@ -1,5 +1,5 @@
-from app.utils import to_satoshi
 from tests.client_requests import addresses
+from app.utils import to_satoshi
 
 
 async def test_normal(client, address_utxo):

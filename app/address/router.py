@@ -1,16 +1,16 @@
+from app.utils import pagination, paginated_response
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.dependencies import get_page
+from app.database import get_session
 from fastapi.params import Depends
+from app.address import service
 from fastapi import APIRouter
 
 from app.schemas import (
-    OutputPaginatedResponse,
     TransactionPaginatedResponse,
+    OutputPaginatedResponse,
     BalanceResponse,
 )
-from app.utils import pagination, paginated_response
-from app.dependencies import get_page
-from app.database import get_session
-from app.address import service
 
 router = APIRouter(prefix="/address", tags=["Addresses"])
 
