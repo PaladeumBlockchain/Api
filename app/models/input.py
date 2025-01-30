@@ -10,4 +10,5 @@ class Input(Base):
     shortcut: Mapped[str] = mapped_column(String(70), index=True, unique=True)
     blockhash: Mapped[str] = mapped_column(String(64), index=True)
     txid: Mapped[str] = mapped_column(String(64), index=True)
+    source_txid: Mapped[str] = mapped_column(String(64), index=True)
     index: Mapped[int]
