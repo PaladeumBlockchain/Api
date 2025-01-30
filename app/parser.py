@@ -92,7 +92,8 @@ async def parse_inputs(transaction_data: dict):
                 "shortcut": vin["txid"] + ":" + str(vin["vout"]),
                 "blockhash": transaction_data["blockhash"],
                 "index": vin["vout"],
-                "txid": vin["txid"],
+                "txid": transaction_data["txid"],
+                "source_txid": vin["txid"],
             }
         )
 
@@ -108,7 +109,7 @@ async def build_movements(settings, inputs, outputs):
                 "method": "getrawtransaction",
                 "params": [txid, True],
             }
-            for txid in list(set([vin["txid"] for vin in inputs]))
+            for txid in list(set([vin["source_txid"] for vin in inputs]))
         ],
     )
 

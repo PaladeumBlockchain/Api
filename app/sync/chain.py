@@ -114,6 +114,7 @@ async def process_block(session: AsyncSession, data: dict):
                     "blockhash": input_data["blockhash"],
                     "index": input_data["index"],
                     "txid": input_data["txid"],
+                    "source_txid": input_data["source_txid"],
                 }
             )
         )

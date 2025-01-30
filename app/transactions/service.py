@@ -57,10 +57,12 @@ async def load_tx_details(
     ):
         input_: Input
 
-        output = output_shortcuts[input_.shortcut]
+        output = await session.scalar(
+            select(Output).filter(Output.shortcut == input_.shortcut)
+        )
 
         input_.amount = output.amount
-        input_.units = output.units
+        input_.units = await get_token_units(session, output.currency)
         input_.currency = output.currency
         input_.address = output.address
 

@@ -18,8 +18,9 @@ async def get_address_transactions(
         f"/address/{address}/transactions", query_string={"page": page}
     )
 
+
 async def get_address_balances(
-        client: TestClient, address: str, page: int = 1
+    client: TestClient, address: str, page: int = 1
 ) -> Response:
     return await client.get(
         f"/address/{address}/balances", query_string={"page": page}
