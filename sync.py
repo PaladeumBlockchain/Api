@@ -1,3 +1,5 @@
+import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app import sessionmanager, get_settings
 from app.sync import sync_chain
@@ -6,6 +8,7 @@ import asyncio
 
 
 async def main():
+    logging.getLogger("apscheduler").setLevel(logging.ERROR)
     scheduler = AsyncIOScheduler()
     settings = get_settings()
 

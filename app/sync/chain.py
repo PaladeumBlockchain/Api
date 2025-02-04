@@ -1,10 +1,12 @@
-from sqlalchemy import select, update, delete, desc, text
+from sqlalchemy import select, update, delete, desc, text, Executable, insert
 from app.parser import make_request, parse_block
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import sessionmanager
 from app.settings import get_settings
+from collections import defaultdict
 from app.utils import token_type
 from decimal import Decimal
+import asyncio
 
 from app.models import (
     AddressBalance,
@@ -16,8 +18,15 @@ from app.models import (
     Block,
 )
 
+LOCKS = defaultdict(asyncio.Lock)
 
-async def process_block(session: AsyncSession, data: dict):
+
+async def process_block(
+    session: AsyncSession,
+    data: dict,
+    execute_last: list[Executable] = None,
+):
+
     # Add new block
     block = Block(**data["block"])
     session.add(block)
@@ -29,23 +38,25 @@ async def process_block(session: AsyncSession, data: dict):
     for output_data in data["outputs"]:
         if output_data["meta"]:
             meta = output_data["meta"]
-            match meta["type"]:
-                case "new_token":
-                    token = Token(
-                        type=token_type(meta["name"]),
-                        name=meta["name"],
-                        units=meta["units"],
-                        reissuable=meta["reissuable"],
-                        amount=Decimal(meta["amount"]),
-                    )
-                    session.add(token)
-                case "reissue_token":
-                    token = await session.scalar(
-                        select(Token).filter(Token.name == meta["name"])
-                    )
-                    token.amount += Decimal(meta["amount"])
-                    token.units = meta["units"]
-                    token.reissuable = meta["reissuable"]
+
+            async with LOCKS["token"]:
+                match meta["type"]:
+                    case "new_token":
+                        token = Token(
+                            type=token_type(meta["name"]),
+                            name=meta["name"],
+                            units=meta["units"],
+                            reissuable=meta["reissuable"],
+                            amount=Decimal(meta["amount"]),
+                        )
+                        session.add(token)
+                    case "reissue_token":
+                        token = await session.scalar(
+                            select(Token).filter(Token.name == meta["name"])
+                        )
+                        token.amount += Decimal(meta["amount"])
+                        token.units = meta["units"]
+                        token.reissuable = meta["reissuable"]
 
         currencies = transaction_currencies.setdefault(output_data["txid"], [])
 
@@ -120,41 +131,53 @@ async def process_block(session: AsyncSession, data: dict):
         )
 
     # Mark outputs used in inputs as spent
-    await session.execute(
+    stmt = (
         update(Output)
         .filter(Output.shortcut.in_(input_shortcuts))
         .values(spent=True)
     )
-
-    for currency, movement in data["block"]["movements"].items():
-        for raw_address, amount in movement.items():
-            if not (
-                address := await session.scalar(
-                    select(Address).filter(Address.address == raw_address)
-                )
-            ):
-                address = Address(address=raw_address)
-                session.add(address)
-
-            if not (
-                balance := await session.scalar(
-                    select(AddressBalance).filter(
-                        AddressBalance.currency == currency,
-                        AddressBalance.address == address,
-                    )
-                )
-            ):
-                balance = AddressBalance(
-                    balance=Decimal(0.0),  # type: ignore
-                    currency=currency,
-                    address=address,
-                )
-
-                session.add(balance)
-
-            balance.balance += Decimal(amount)
+    if execute_last:
+        execute_last.append(stmt)
+    else:
+        await session.execute(stmt)
 
     return block
+
+
+async def process_movements(
+    session: AsyncSession, movements: dict[str, dict[str, float]]
+):
+    for currency, movement in movements.items():
+        for raw_address, amount in movement.items():
+            address = await session.scalar(
+                select(Address).filter(Address.address == raw_address)
+            )
+            if address is None:
+                address_id = await session.scalar(
+                    insert(Address)
+                    .values(address=raw_address)
+                    .returning(Address.id)
+                )
+
+                await session.execute(
+                    insert(AddressBalance).values(
+                        balance=Decimal(amount),  # type: ignore
+                        currency=currency,
+                        address_id=address_id,
+                    )
+                )
+
+            else:
+                await session.execute(
+                    update(
+                        AddressBalance,
+                    )
+                    .values(balance=AddressBalance.balance + Decimal(amount))
+                    .filter(
+                        AddressBalance.currency == currency,
+                        AddressBalance.address_id == address.id,
+                    )
+                )
 
 
 async def process_reorg(session: AsyncSession, block: Block):
@@ -236,10 +259,28 @@ async def process_reorg(session: AsyncSession, block: Block):
     return new_latest
 
 
+async def process_height(
+    session,
+    height,
+    execute_after: list[Executable],
+    log: bool = False,
+):
+    if log:
+        print(f"Processing block #{height}")
+
+    block_data = await parse_block(height)
+
+    await process_block(session, block_data, execute_after)
+
+    async with LOCKS["movements"]:
+        await process_movements(session, block_data["block"]["movements"])
+
+
 async def sync_chain():
     settings = get_settings()
 
     async with sessionmanager.session() as session:
+        session: AsyncSession
         latest = await session.scalar(
             select(Block).order_by(desc(Block.height)).limit(1)
         )
@@ -249,8 +290,7 @@ async def sync_chain():
 
             block_data = await parse_block(0)
 
-            latest = await process_block(session, block_data)
-
+            latest = await process_block(session, block_data, None)
             await session.commit()
 
         while True:
@@ -271,28 +311,49 @@ async def sync_chain():
             latest = await process_reorg(session, latest)
             await session.commit()
 
-        chain_data = await make_request(
-            settings.blockchain.endpoint,
-            {"id": "info", "method": "getblockchaininfo", "params": []},
-        )
+    chain_data = await make_request(
+        settings.blockchain.endpoint,
+        {"id": "info", "method": "getblockchaininfo", "params": []},
+    )
 
-        chain_blocks = chain_data["result"]["blocks"]
-        display_log = (chain_blocks - latest.height) < 100
+    tasks_batch = 16  # Greater values require to increase -rpcworkqueue parameter in node daemon
 
-        for height in range(latest.height + 1, chain_blocks + 1):
-            try:
-                if display_log:
-                    print(f"Processing block #{height}")
-                else:
-                    if height % 100 == 0:
-                        print(f"Processing block #{height}")
+    chain_blocks = chain_data["result"]["blocks"]
+    display_log = (chain_blocks - latest.height) < 100
 
-                block_data = await parse_block(height)
+    # Ensure that all blocks will be processed without repeating inner loops
+    end = chain_blocks
+    if chain_blocks % tasks_batch != 0:
+        end += chain_blocks % tasks_batch
 
-                await process_block(session, block_data)
+    # Clean session to be sure that none objects has dirty state on start
+    async with sessionmanager.session(auto_flush=False) as session:
+        for base_height in range(latest.height + 1, end + 1, tasks_batch):
+            # Statements which required to be executed after all changes was made
+            execute_last = []
+            tasks = []
+            # Make tasks batch
+            for height in range(
+                base_height, min(base_height + tasks_batch, chain_blocks + 1)
+            ):
+                tasks.append(
+                    process_height(
+                        session,
+                        height,
+                        execute_last,
+                        log=display_log or height % 100 == 0,
+                    )
+                )
 
-                await session.commit()
+            # Run all tasks asynchronously
+            await asyncio.gather(*tasks)
 
-            except KeyboardInterrupt:
-                print("Keyboard interrupt")
-                break
+            # Flush all objects to database
+            await session.flush()
+
+            # Execute statements produced by tasks
+            for stmt in execute_last:
+                await session.execute(stmt)
+
+            # Commit this batch changes
+            await session.commit()
