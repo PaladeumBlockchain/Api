@@ -1,9 +1,9 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, Depends
-
 from app.schemas import TransactionPaginatedResponse, TransactionResponse
 from app.utils import pagination, paginated_response
+from sqlalchemy.ext.asyncio import AsyncSession
 from .dependencies import require_transaction
+from .schemas import TransactionBroadcastArgs
+from fastapi import APIRouter, Depends
 from app.dependencies import get_page
 from app.database import get_session
 from app.models import Transaction
@@ -40,6 +40,6 @@ async def get_transaction_info(
 
 @router.post("/broadcast")
 async def broadcast_transaction(
-    raw: str,
+    transaction: TransactionBroadcastArgs,
 ):
-    return await service.broadcast_transaction(raw)
+    return await service.broadcast_transaction(transaction.raw)
