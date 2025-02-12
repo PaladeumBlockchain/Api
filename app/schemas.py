@@ -61,6 +61,8 @@ class OutputResponse(CustomModel):
     timelock: int
     type: str
     spent: bool
+    script: str
+    asm: str
     index: int
 
 

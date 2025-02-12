@@ -39,6 +39,9 @@ def parse_meta(spk):
     return {}
 
 
+
+
+
 async def parse_outputs(transaction_data: dict):
     outputs = []
 
@@ -54,7 +57,7 @@ async def parse_outputs(transaction_data: dict):
             amount = spk["token"]["amount"]
 
         else:
-            timelock = spk["timelock"] if "timelock" in spk else 0
+            timelock = int(spk["asm"].split(" ", 1)[0]) if spk["type"] == "cltv" else 0
             currency = constants.DEFAULT_CURRENCY
             amount = vout["value"]
 
@@ -73,6 +76,8 @@ async def parse_outputs(transaction_data: dict):
                 "index": vout["n"],
                 "amount": amount,
                 "spent": False,
+                "script": spk["hex"],
+                "asm": spk["asm"],
                 "meta": meta,
             }
         )

@@ -115,6 +115,8 @@ async def create_output(
         type=type,
         meta={},
         spent=spent,
+        script="",
+        asm="",
         index=index,
     )
 

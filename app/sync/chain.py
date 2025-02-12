@@ -68,6 +68,8 @@ async def process_block(session: AsyncSession, data: dict):
                     "timelock": output_data["timelock"],
                     "type": output_data["type"],
                     "spent": output_data["spent"],
+                    "script": output_data["script"],
+                    "asm": output_data["asm"],
                     "index": output_data["index"],
                     "meta": output_data["meta"],
                 }

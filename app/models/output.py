@@ -18,6 +18,8 @@ class Output(Base):
     amount: Mapped[Numeric] = mapped_column(Numeric(28, 8))
     timelock: Mapped[int]
     type: Mapped[str] = mapped_column(String(64), index=True)
+    script: Mapped[str]
+    asm: Mapped[str]
     spent: Mapped[bool]
     index: Mapped[int]
 
