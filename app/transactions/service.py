@@ -1,4 +1,6 @@
-from app.models import Transaction, Output, Input, Block, Token
+from decimal import Decimal
+
+from app.models import Transaction, Output, Input, Block, Token, MemPool
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.blocks.service import get_latest_block
 from sqlalchemy import select, Select, func
@@ -126,3 +128,62 @@ async def broadcast_transaction(raw: str):
         settings.blockchain.endpoint,
         {"id": "broadcast", "method": "sendrawtransaction", "params": [raw]},
     )
+
+
+async def load_mempool_tx_details(
+    session: AsyncSession, transaction: dict, mempool_outputs: dict[str, dict]
+) -> dict | None:
+    transaction["height"] = None
+    transaction["confirmations"] = 0
+    transaction["amount"] = {}
+    transaction["fee"] = Decimal(0)
+
+    for output in transaction["outputs"]:
+        output["units"] = await get_token_units(session, output["currency"])
+
+        transaction["amount"].setdefault(output["currency"], Decimal(0))
+        transaction["amount"][output["currency"]] += Decimal(output["amount"])
+
+        if output["currency"] == "PLB":
+            transaction["fee"] -= Decimal(output["amount"])
+
+    for input_ in transaction["inputs"]:
+        if input_["shortcut"] in mempool_outputs:
+            output = mempool_outputs[input_["shortcut"]]
+            input_["amount"] = output["amount"]
+            input_["units"] = await get_token_units(session, output["currency"])
+            input_["currency"] = output["currency"]
+            input_["address"] = output["address"]
+
+            if output["currency"] == "PLB":
+                transaction["fee"] += Decimal(output["amount"])
+
+            continue
+
+        output_: Output = await session.scalar(
+            select(Output).filter(Output.shortcut == input_["shortcut"])
+        )
+
+        input_["amount"] = output_.amount
+        input_["units"] = await get_token_units(session, output_.currency)
+        input_["currency"] = output_.currency
+        input_["address"] = output_.address
+
+        if output_.currency == "PLB":
+            transaction["fee"] += output_.amount
+
+    return transaction
+
+
+async def get_mempool_transactions(session: AsyncSession) -> list[dict]:
+    mempool = await session.scalar(select(MemPool).limit(1))
+
+    if mempool is None:
+        return []
+
+    return [
+        await load_mempool_tx_details(
+            session, transaction, mempool.raw["outputs"]
+        )
+        for transaction in mempool.raw["transactions"]
+    ]

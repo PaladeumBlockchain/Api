@@ -33,6 +33,15 @@ async def get_transactions(
     )
 
 
+@router.get(
+    "/mempool",
+    response_model=list[TransactionResponse],
+    operation_id="get_mempool_transactions",
+)
+async def get_mempool(session: AsyncSession = Depends(get_session)):
+    return await service.get_mempool_transactions(session)
+
+
 @router.get("/{txid}", response_model=TransactionResponse)
 async def get_transaction_info(
     transaction: Transaction = Depends(require_transaction),

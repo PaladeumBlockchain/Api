@@ -1,6 +1,7 @@
 from .transaction import Transaction
 from .address import AddressBalance
 from .address import Address
+from .mempool import MemPool
 from .output import Output
 from .token import Token
 from .block import Block
@@ -12,6 +13,7 @@ __all__ = [
     "AddressBalance",
     "Transaction",
     "Address",
+    "MemPool",
     "Output",
     "Token",
     "Block",

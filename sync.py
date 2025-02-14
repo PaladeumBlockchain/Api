@@ -1,6 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app import sessionmanager, get_settings
-from app.sync import sync_chain
+from app.sync import sync_chain, sync_mempool
 from datetime import datetime
 import asyncio
 
@@ -13,6 +13,9 @@ async def main():
 
     scheduler.add_job(
         sync_chain, "interval", seconds=10, next_run_time=datetime.now()
+    )
+    scheduler.add_job(
+        sync_mempool, "interval", seconds=10, next_run_time=datetime.now()
     )
 
     scheduler.start()

@@ -9,7 +9,7 @@ def unspent_outputs_filters(query: Select, address: str, currency) -> Select:
     query = query.filter(
         Output.address == address,
         func.lower(Output.currency) == currency.lower(),  # type: ignore
-        ~Output.spent
+        ~Output.spent,
     )
 
     return query

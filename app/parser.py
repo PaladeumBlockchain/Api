@@ -39,9 +39,6 @@ def parse_meta(spk):
     return {}
 
 
-
-
-
 async def parse_outputs(transaction_data: dict):
     outputs = []
 
@@ -57,7 +54,9 @@ async def parse_outputs(transaction_data: dict):
             amount = spk["token"]["amount"]
 
         else:
-            timelock = int(spk["asm"].split(" ", 1)[0]) if spk["type"] == "cltv" else 0
+            timelock = (
+                int(spk["asm"].split(" ", 1)[0]) if spk["type"] == "cltv" else 0
+            )
             currency = constants.DEFAULT_CURRENCY
             amount = vout["value"]
 
@@ -67,7 +66,7 @@ async def parse_outputs(transaction_data: dict):
         outputs.append(
             {
                 "shortcut": transaction_data["txid"] + ":" + str(vout["n"]),
-                "blockhash": transaction_data["blockhash"],
+                "blockhash": transaction_data.get("blockhash"),
                 "txid": transaction_data["txid"],
                 "address": spk["addresses"][0],
                 "timelock": timelock,
@@ -95,7 +94,7 @@ async def parse_inputs(transaction_data: dict):
         inputs.append(
             {
                 "shortcut": vin["txid"] + ":" + str(vin["vout"]),
-                "blockhash": transaction_data["blockhash"],
+                "blockhash": transaction_data.get("blockhash"),
                 "index": vin["vout"],
                 "txid": transaction_data["txid"],
                 "source_txid": vin["txid"],
@@ -191,15 +190,17 @@ async def parse_transactions(txids: list[str], stake: bool = False):
                 for address in vout["scriptPubKey"].get("addresses", [])
             )
         )
+        timestamp = transaction_data.get("time", None)
+        created = datetime.fromtimestamp(timestamp) if timestamp else None
 
         transactions.append(
             {
-                "created": datetime.fromtimestamp(transaction_data["time"]),
+                "created": created,
                 "addresses": addresses,
-                "blockhash": transaction_data["blockhash"],
+                "blockhash": transaction_data.get("blockhash"),
                 "locktime": transaction_data["locktime"],
                 "version": transaction_data["version"],
-                "timestamp": transaction_data["time"],
+                "timestamp": timestamp,
                 "size": transaction_data["size"],
                 "txid": transaction_data["txid"],
             }

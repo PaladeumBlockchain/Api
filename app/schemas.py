@@ -81,9 +81,9 @@ class InputFullResponse(CustomModel):
 
 
 class TransactionResponse(CustomModel):
-    height: int
-    blockhash: str
-    timestamp: int
+    height: int | None
+    blockhash: str | None
+    timestamp: int | None
     txid: str
     amount: dict[str, Satoshi]
     outputs: list[OutputFullResponse]
