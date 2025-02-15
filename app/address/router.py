@@ -10,6 +10,7 @@ from app.schemas import (
     TransactionPaginatedResponse,
     OutputPaginatedResponse,
     BalanceResponse,
+    TransactionResponse,
 )
 
 router = APIRouter(prefix="/address", tags=["Addresses"])
@@ -48,6 +49,19 @@ async def get_transactions(
     items = await service.list_transactions(session, address, limit, offset)
 
     return paginated_response(items, total, page, limit)
+
+
+@router.get(
+    "/{address}/mempool",
+    summary="List mempool transactions by destination address",
+    response_model=list[TransactionResponse],
+    operation_id="list_address_mempool",
+)
+async def list_address_mempool_transactions(
+    address: str,
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.list_address_mempool_transactions(session, address)
 
 
 @router.get("/{address}/balances", response_model=list[BalanceResponse])

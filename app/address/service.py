@@ -1,6 +1,10 @@
-from app.models import Output, Transaction, AddressBalance, Address
+from app.models import Output, Transaction, AddressBalance, Address, MemPool
 from sqlalchemy import Select, select, func, ScalarResult
-from app.transactions.service import load_tx_details, get_token_units
+from app.transactions.service import (
+    load_tx_details,
+    get_token_units,
+    load_mempool_tx_details,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.blocks.service import get_latest_block
 
@@ -91,3 +95,20 @@ async def list_balances(
         balances.append(balance)
 
     return balances
+
+
+async def list_address_mempool_transactions(
+    session: AsyncSession, address: str
+):
+    mempool = await session.scalar(select(MemPool).limit(1))
+
+    if mempool is None:
+        return []
+
+    return [
+        await load_mempool_tx_details(
+            session, transaction, mempool.raw["outputs"]
+        )
+        for transaction in mempool.raw["transactions"]
+        if address in transaction["addresses"]
+    ]
