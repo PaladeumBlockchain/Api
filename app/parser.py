@@ -1,3 +1,7 @@
+from decimal import Decimal
+
+from black.trans import defaultdict
+
 from app.settings import get_settings
 from datetime import datetime
 from app import constants
@@ -73,7 +77,7 @@ async def parse_outputs(transaction_data: dict):
                 "currency": currency,
                 "type": spk["type"],
                 "index": vout["n"],
-                "amount": amount,
+                "amount": Decimal(str(amount)),
                 "spent": False,
                 "script": spk["hex"],
                 "asm": spk["asm"],
@@ -126,26 +130,25 @@ async def build_movements(settings, inputs, outputs):
         for vout in vin_vouts:
             input_outputs[vout["shortcut"]] = vout
 
-    movements = {}
+    # Use convenient defaultdict to not bloat code with setdefault calls
+    movements: dict[str, dict[str, Decimal]] = defaultdict(
+        lambda: defaultdict(Decimal)
+    )
 
     for output in outputs:
-        currency_movement = movements.setdefault(output["currency"], {})
+        currency = output["currency"]
         address = output["address"]
         amount = output["amount"]
 
-        currency_movement.setdefault(address, 0)
-        currency_movement[address] += amount
+        movements[currency][address] += amount
 
     for input in inputs:  # noqa
         input_output = input_outputs[input["shortcut"]]
         currency = input_output["currency"]
         address = input_output["address"]
         amount = input_output["amount"]
-        currency_movement = movements[currency]
 
-        currency_movement.setdefault(address, 0)
-
-        currency_movement[address] -= amount
+        movements[currency][address] -= amount
 
     for currency in movements:
         movements[currency] = {
