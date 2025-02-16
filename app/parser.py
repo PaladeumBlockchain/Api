@@ -148,14 +148,13 @@ async def build_movements(settings, inputs, outputs):
 
         movements[currency][address] -= amount
 
-    for currency in movements:
-        movements[currency] = {
-            key: value
-            for key, value in movements[currency].items()
-            if value != 0.0
+    return {
+        currency: {
+            address: float(amount)
+            for address, amount in currency_movement.items()
         }
-
-    return movements
+        for currency, currency_movement in movements.items()
+    }
 
 
 async def parse_transactions(txids: list[str], stake: bool = False):

@@ -157,7 +157,7 @@ async def process_block(session: AsyncSession, data: dict):
 
                 session.add(balance)
 
-            balance.balance += amount
+            balance.balance += Decimal(str(amount))
 
     return block
 
