@@ -45,11 +45,13 @@ class DatabaseSessionManager:
                 raise
 
     @contextlib.asynccontextmanager
-    async def session(self) -> AsyncIterator[AsyncSession]:
+    async def session(
+        self, auto_flush: bool = True
+    ) -> AsyncIterator[AsyncSession]:
         if self._sessionmaker is None:
             raise Exception("DatabaseSessionManager is not initialized")
 
-        session = self._sessionmaker()
+        session = self._sessionmaker(autoflush=auto_flush)
 
         try:
             yield session
