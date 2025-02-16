@@ -3,6 +3,7 @@ from app.parser import make_request, parse_block
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import sessionmanager
 from app.settings import get_settings
+from collections import defaultdict
 from app.utils import token_type
 from decimal import Decimal
 
@@ -22,8 +23,10 @@ async def process_block(session: AsyncSession, data: dict):
     block = Block(**data["block"])
     session.add(block)
 
-    transaction_currencies: dict[str, list[str]] = {}
-    transaction_amounts: dict[str, dict[str, Decimal]] = {}
+    transaction_currencies: dict[str, list[str]] = defaultdict(list)
+    transaction_amounts: dict[str, dict[str, Decimal]] = defaultdict(
+        lambda: defaultdict(Decimal)
+    )
 
     # Add new outputs to the session
     for output_data in data["outputs"]:
@@ -47,14 +50,14 @@ async def process_block(session: AsyncSession, data: dict):
                     token.units = meta["units"]
                     token.reissuable = meta["reissuable"]
 
-        currencies = transaction_currencies.setdefault(output_data["txid"], [])
+        txid = output_data["txid"]
+        currency = output_data["currency"]
 
-        if output_data["currency"] not in currencies:
-            currencies.append(output_data["currency"])
+        currencies = transaction_currencies[txid]
+        if currency not in currencies:
+            currencies.append(currency)
 
-        amounts = transaction_amounts.setdefault(output_data["txid"], {})
-        amounts.setdefault(output_data["currency"], Decimal(0))
-        amounts[output_data["currency"]] += Decimal(output_data["amount"])
+        transaction_amounts[txid][currency] += output_data["amount"]
 
         session.add(
             Output(
@@ -154,7 +157,7 @@ async def process_block(session: AsyncSession, data: dict):
 
                 session.add(balance)
 
-            balance.balance += Decimal(amount)
+            balance.balance += amount
 
     return block
 
