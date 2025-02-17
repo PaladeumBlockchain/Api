@@ -1,3 +1,5 @@
+import time
+
 from app import sessionmanager, parser, get_settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import MemPool
@@ -5,6 +7,7 @@ from sqlalchemy import select
 
 
 async def sync_mempool():
+    start = time.time()
     settings = get_settings()
 
     async with sessionmanager.session() as session:
@@ -36,6 +39,8 @@ async def sync_mempool():
                 if output["txid"] != txid:
                     continue
 
+                output["amount"] = float(output["amount"])
+
                 outputs.append(output)
                 raw_mempool["outputs"][output["shortcut"]] = output
 
@@ -57,4 +62,6 @@ async def sync_mempool():
 
         await session.commit()
 
-        print("Synced mempool")
+        print(
+            f"Synced mempool in {(time.time() - start) * 1000:.3f} miliseconds"
+        )

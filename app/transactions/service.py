@@ -150,27 +150,24 @@ async def load_mempool_tx_details(
     for input_ in transaction["inputs"]:
         if input_["shortcut"] in mempool_outputs:
             output = mempool_outputs[input_["shortcut"]]
-            input_["amount"] = output["amount"]
+
+            input_["amount"] = Decimal(output["amount"])
             input_["units"] = await get_token_units(session, output["currency"])
             input_["currency"] = output["currency"]
             input_["address"] = output["address"]
 
-            if output["currency"] == "PLB":
-                transaction["fee"] += Decimal(output["amount"])
+        else:
+            output_: Output = await session.scalar(
+                select(Output).filter(Output.shortcut == input_["shortcut"])
+            )
 
-            continue
+            input_["amount"] = output_.amount
+            input_["units"] = await get_token_units(session, output_.currency)
+            input_["currency"] = output_.currency
+            input_["address"] = output_.address
 
-        output_: Output = await session.scalar(
-            select(Output).filter(Output.shortcut == input_["shortcut"])
-        )
-
-        input_["amount"] = output_.amount
-        input_["units"] = await get_token_units(session, output_.currency)
-        input_["currency"] = output_.currency
-        input_["address"] = output_.address
-
-        if output_.currency == "PLB":
-            transaction["fee"] += output_.amount
+        if input_["currency"] == "PLB":
+            transaction["fee"] += input_["amount"]
 
     return transaction
 
