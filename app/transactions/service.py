@@ -151,7 +151,7 @@ async def load_mempool_tx_details(
         if input_["shortcut"] in mempool_outputs:
             output = mempool_outputs[input_["shortcut"]]
 
-            input_["amount"] = Decimal(output["amount"])
+            input_["amount"] = Decimal(str(output["amount"]))
             input_["units"] = await get_token_units(session, output["currency"])
             input_["currency"] = output["currency"]
             input_["address"] = output["address"]
