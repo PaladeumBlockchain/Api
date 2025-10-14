@@ -39,3 +39,8 @@ exclude = [".venv", "venv", "alembic"]
 extend-ignore = [
     "F821",  # Disable checks for annotated SQLAlchemy relations 
 ]
+
+[tool.pyright]
+reportAny = false
+reportUnusedCallResult = false
+reportCallInDefaultInitializer = false

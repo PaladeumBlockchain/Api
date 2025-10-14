@@ -23,9 +23,7 @@ async def count_unspent_outputs(
     session: AsyncSession, address: str, currency: str
 ) -> int:
     return await session.scalar(
-        unspent_outputs_filters(
-            select(func.count(Output.id)), address, currency
-        )
+        unspent_outputs_filters(select(func.count(Output.id)), address, currency)
     )
 
 
@@ -38,30 +36,38 @@ async def list_unspent_outputs(
 ) -> ScalarResult[Output]:
     return await session.scalars(
         unspent_outputs_filters(
-            select(Output)
-            .order_by(Output.amount.desc())
-            .limit(limit)
-            .offset(offset),
+            select(Output).order_by(Output.amount.desc()).limit(limit).offset(offset),
             address,
             currency,
         )
     )
 
 
-def transactions_filters(query: Select, address: str) -> Select:
+def transactions_filters(
+    query: Select, address: str, currency: str | None = None
+) -> Select:
     query = query.filter(Transaction.addresses.contains([address]))
+
+    if currency is not None:
+        query = query.filter(Transaction.currencies.contains([currency]))
 
     return query
 
 
-async def count_transactions(session: AsyncSession, address: str):
+async def count_transactions(
+    session: AsyncSession, address: str, currency: str | None = None
+):
     return await session.scalar(
-        transactions_filters(select(func.count(Transaction.id)), address)
+        transactions_filters(select(func.count(Transaction.id)), address, currency)
     )
 
 
 async def list_transactions(
-    session: AsyncSession, address: str, limit: int, offset: int
+    session: AsyncSession,
+    address: str,
+    limit: int,
+    offset: int,
+    currency: str | None = None,
 ) -> list[Transaction]:
     latest_block = await get_latest_block(session)
     transactions = []
@@ -72,18 +78,15 @@ async def list_transactions(
             .limit(limit)
             .offset(offset),
             address,
+            currency,
         )
     ):
-        transactions.append(
-            await load_tx_details(session, transaction, latest_block)
-        )
+        transactions.append(await load_tx_details(session, transaction, latest_block))
 
     return transactions
 
 
-async def list_balances(
-    session: AsyncSession, address: str
-) -> list[AddressBalance]:
+async def list_balances(session: AsyncSession, address: str) -> list[AddressBalance]:
     balances = []
     for balance in await session.scalars(
         select(AddressBalance).filter(
@@ -97,18 +100,14 @@ async def list_balances(
     return balances
 
 
-async def list_address_mempool_transactions(
-    session: AsyncSession, address: str
-):
+async def list_address_mempool_transactions(session: AsyncSession, address: str):
     mempool = await session.scalar(select(MemPool).limit(1))
 
     if mempool is None:
         return []
 
     return [
-        await load_mempool_tx_details(
-            session, transaction, mempool.raw["outputs"]
-        )
+        await load_mempool_tx_details(session, transaction, mempool.raw["outputs"])
         for transaction in mempool.raw["transactions"]
         if address in transaction["addresses"]
     ]
