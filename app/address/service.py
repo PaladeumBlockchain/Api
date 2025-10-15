@@ -43,6 +43,48 @@ async def list_unspent_outputs(
     )
 
 
+def utxo_cte(address: str, currency: str):
+    return (
+        select(
+            Output,
+            func.sum(Output.amount)  # type: ignore
+            .over(order_by=Output.blockhash)
+            .label("cumulative_amount"),
+        )
+        .filter(Output.address == address, Output.currency == currency, ~Output.spent)
+        .cte("cumulative_outputs")
+    )
+
+
+async def count_utxo(
+    session: AsyncSession, address: str, currency: str, amount: float
+) -> int:
+    cte = utxo_cte(address, currency)
+    query = (
+        select(func.count(1)).select_from(cte).where(cte.c.cumulative_amount < amount)
+    )
+    return await session.scalar(query) or 0
+
+
+async def list_utxo(
+    session: AsyncSession,
+    address: str,
+    currency: str,
+    amount: float,
+    limit: int,
+    offset: int,
+):
+    cte = utxo_cte(address, currency)
+    query = (
+        select(cte)
+        .select_from(cte)
+        .where(cte.c.cumulative_amount < amount)
+        .limit(limit)
+        .offset(offset)
+    )
+    return await session.execute(query)
+
+
 def transactions_filters(
     query: Select, address: str, currency: str | None = None
 ) -> Select:
