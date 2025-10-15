@@ -19,9 +19,15 @@ async def get_address_transactions(
     )
 
 
+async def list_address_transactions_ticker(
+    client: TestClient, address: str, ticker: str, page: int = 1
+) -> Response:
+    return await client.get(
+        f"/address/{address}/transactions/{ticker}", query_string={"page": page}
+    )
+
+
 async def get_address_balances(
     client: TestClient, address: str, page: int = 1
 ) -> Response:
-    return await client.get(
-        f"/address/{address}/balances", query_string={"page": page}
-    )
+    return await client.get(f"/address/{address}/balances", query_string={"page": page})
