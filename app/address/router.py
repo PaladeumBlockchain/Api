@@ -32,6 +32,26 @@ async def get_unspent_outputs(
     return paginated_response(items.all(), total, page, limit)
 
 
+@router.get(
+    "/{address}/utxo/{currency}",
+    summary="Get utxo for specified amount",
+    response_model=OutputPaginatedResponse,
+)
+async def get_utxo(
+    address: str,
+    currency: str,
+    amount: float,
+    session: AsyncSession = Depends(get_session),
+    page: int = Depends(get_page),
+):
+    limit, offset = pagination(page)
+
+    total = await service.count_utxo(session, address, currency, amount)
+    items = await service.list_utxo(session, address, currency, amount, limit, offset)
+
+    return paginated_response(items.all(), total, page, limit)
+
+
 @router.get("/{address}/transactions", response_model=TransactionPaginatedResponse)
 async def get_transactions(
     address: str,

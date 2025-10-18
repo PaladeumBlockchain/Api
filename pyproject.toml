@@ -43,4 +43,6 @@ extend-ignore = [
 [tool.pyright]
 reportAny = false
 reportUnusedCallResult = false
+enableTypeIgnoreComments = true
 reportCallInDefaultInitializer = false
+reportIgnoreCommentWithoutRule = false
