@@ -31,7 +31,7 @@ async def process_block(session: AsyncSession, data: dict):
             | (
                 (Output.spent == False)
                 & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock <= block.created)
+                & (Output.timelock <= int(block.created.timestamp()))
             )
         )
         .group_by(Output.address, Output.currency)
@@ -218,7 +218,7 @@ async def process_reorg(session: AsyncSession, block: Block):
             (Output.timelock == block.height)
             | (
                 (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock >= block.created)
+                & (Output.timelock >= int(block.created.timestamp()))
             )
         )
         .group_by(Output.address, Output.currency)
