@@ -200,11 +200,13 @@ async def process_reorg(session: AsyncSession, block: Block):
     reorg_height = block.height
     movements = block.movements
 
-    input_shortcuts = await session.scalars(
-        delete(Input)
-        .filter(Input.blockhash == block.blockhash)
-        .returning(Input.shortcut)
-    )
+    input_shortcuts = (
+        await session.execute(
+            delete(Input)
+            .filter(Input.blockhash == block.blockhash)
+            .returning(Input.shortcut)
+        )
+    ).scalars()
 
     await session.execute(
         update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=False)
