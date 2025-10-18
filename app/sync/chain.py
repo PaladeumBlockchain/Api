@@ -200,6 +200,16 @@ async def process_reorg(session: AsyncSession, block: Block):
     reorg_height = block.height
     movements = block.movements
 
+    input_shortcuts = await session.scalars(
+        delete(Input)
+        .filter(Input.blockhash == block.blockhash)
+        .returning(Input.shortcut)
+    )
+
+    await session.execute(
+        update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=False)
+    )
+
     locked_outputs = await session.execute(
         select(func.sum(Output.amount), Output.address, Output.currency)
         .filter(
@@ -264,8 +274,6 @@ async def process_reorg(session: AsyncSession, block: Block):
     )
 
     await session.execute(delete(Output).filter(Output.blockhash == block.blockhash))
-
-    await session.execute(delete(Input).filter(Input.blockhash == block.blockhash))
 
     await session.execute(
         delete(Transaction).filter(Transaction.blockhash == block.blockhash)
