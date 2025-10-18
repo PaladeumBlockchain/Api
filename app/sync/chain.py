@@ -205,7 +205,7 @@ async def process_reorg(session: AsyncSession, block: Block):
         .filter(
             (Output.timelock == block.height)
             | (
-                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
                 & (Output.timelock >= block.created)
             )
         )
