@@ -31,7 +31,7 @@ async def process_block(session: AsyncSession, data: dict):
             | (
                 (Output.spent == False)
                 & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock <= utcnow())
+                & (Output.timelock <= block.created)
             )
         )
         .group_by(Output.address, Output.currency)
@@ -200,6 +200,39 @@ async def process_reorg(session: AsyncSession, block: Block):
     reorg_height = block.height
     movements = block.movements
 
+    locked_outputs = await session.execute(
+        select(func.sum(Output.amount), Output.address, Output.currency)
+        .filter(
+            (Output.timelock == block.height)
+            | (
+                (Output.spent == False)
+                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                & (Output.timelock >= block.created)
+            )
+        )
+        .group_by(Output.address, Output.currency)
+    )
+
+    for amount, address, currency in locked_outputs:
+        address = await session.scalar(
+            select(Address).filter(Address.address == address)
+        )
+        if address is None:
+            continue
+
+        address_balance = await session.scalar(
+            select(AddressBalance).filter(
+                AddressBalance.address == address,
+                AddressBalance.currency == currency,
+            )
+        )
+        assert (
+            address_balance is not None
+        ), f"Expected balance for ({address=!r}, {currency=!r}), got None. Possible a bug inside synchronization code"
+
+        address_balance.balance -= amount
+        address_balance.locked += amount
+
     outputs = await session.scalars(
         select(Output)
         .filter(
@@ -253,8 +286,12 @@ async def process_reorg(session: AsyncSession, block: Block):
                     Address.address == raw_address,
                 )
             )
+            assert (
+                balance is not None
+            ), f"Expected balance for ({raw_address=!r}, {currency=!r}), got None. Possible a bug inside synchronization code"
 
-            balance.balance -= Decimal(amount)
+            balance.balance -= Decimal(amount["amount"])
+            balance.locked -= Decimal(amount["locked"])
 
     new_latest = await session.scalar(
         select(Block).filter(Block.height == reorg_height - 1)
