@@ -1,10 +1,11 @@
-from sqlalchemy import select, update, delete, desc, text
+from sqlalchemy import func, select, update, delete, desc, text
+from app import constants
 from app.parser import make_request, parse_block
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import sessionmanager
 from app.settings import get_settings
 from collections import defaultdict
-from app.utils import token_type
+from app.utils import token_type, utcnow
 from decimal import Decimal
 
 from app.models import (
@@ -22,6 +23,40 @@ async def process_block(session: AsyncSession, data: dict):
     # Add new block
     block = Block(**data["block"])
     session.add(block)
+
+    locked_outputs = await session.execute(
+        select(func.sum(Output.amount), Output.address, Output.currency)
+        .filter(
+            (Output.timelock == block.height)
+            | (
+                (Output.spent == False)
+                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                & (Output.timelock <= int(block.created.timestamp()))
+            )
+        )
+        .group_by(Output.address, Output.currency)
+    )
+
+    for amount, address, currency in locked_outputs:
+        address = await session.scalar(
+            select(Address).filter(Address.address == address)
+        )
+        if address is None:
+            continue
+
+        address_balance = await session.scalar(
+            select(AddressBalance).filter(
+                AddressBalance.address == address,
+                AddressBalance.currency == currency,
+            )
+        )
+        if not address_balance:
+            address_balance = AddressBalance(
+                address=address, balance=Decimal(), locked=Decimal()
+            )
+
+        address_balance.balance += amount
+        address_balance.locked -= amount
 
     transaction_currencies: dict[str, list[str]] = defaultdict(list)
     transaction_amounts: dict[str, dict[str, Decimal]] = defaultdict(
@@ -92,10 +127,9 @@ async def process_block(session: AsyncSession, data: dict):
                     "addresses": transaction_data["addresses"],
                     "size": transaction_data["size"],
                     "txid": transaction_data["txid"],
-                    "currencies": transaction_currencies[
-                        transaction_data["txid"]
-                    ],
+                    "currencies": transaction_currencies[transaction_data["txid"]],
                     "height": block.height,
+                    "coinbase": transaction_data["coinbase"],
                     "amount": {
                         currency: float(amount)
                         for currency, amount in transaction_amounts[
@@ -126,9 +160,7 @@ async def process_block(session: AsyncSession, data: dict):
 
     # Mark outputs used in inputs as spent
     await session.execute(
-        update(Output)
-        .filter(Output.shortcut.in_(input_shortcuts))
-        .values(spent=True)
+        update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=True)
     )
 
     for currency, movement in data["block"]["movements"].items():
@@ -150,14 +182,16 @@ async def process_block(session: AsyncSession, data: dict):
                 )
             ):
                 balance = AddressBalance(
-                    balance=Decimal(0.0),  # type: ignore
+                    balance=Decimal(0.0),
+                    locked=Decimal(0.0),
                     currency=currency,
                     address=address,
                 )
 
                 session.add(balance)
 
-            balance.balance += Decimal(str(amount))
+            balance.balance += Decimal(str(amount["amount"]))
+            balance.locked += Decimal(str(amount["locked"]))
 
     return block
 
@@ -166,13 +200,55 @@ async def process_reorg(session: AsyncSession, block: Block):
     reorg_height = block.height
     movements = block.movements
 
+    input_shortcuts = (
+        await session.execute(
+            delete(Input)
+            .filter(Input.blockhash == block.blockhash)
+            .returning(Input.shortcut)
+        )
+    ).scalars()
+
+    await session.execute(
+        update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=False)
+    )
+
+    locked_outputs = await session.execute(
+        select(func.sum(Output.amount), Output.address, Output.currency)
+        .filter(
+            (Output.timelock == block.height)
+            | (
+                (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                & (Output.timelock >= int(block.created.timestamp()))
+            )
+        )
+        .group_by(Output.address, Output.currency)
+    )
+
+    for amount, address, currency in locked_outputs:
+        address = await session.scalar(
+            select(Address).filter(Address.address == address)
+        )
+        if address is None:
+            continue
+
+        address_balance = await session.scalar(
+            select(AddressBalance).filter(
+                AddressBalance.address == address,
+                AddressBalance.currency == currency,
+            )
+        )
+        assert (
+            address_balance is not None
+        ), f"Expected balance for ({address=!r}, {currency=!r}), got None. Possible a bug inside synchronization code"
+
+        address_balance.balance -= amount
+        address_balance.locked += amount
+
     outputs = await session.scalars(
         select(Output)
         .filter(
             Output.blockhash == block.blockhash,
-            Output.meta.op("->>")(text("'type'")).in_(
-                ["new_token", "reissue_token"]
-            ),
+            Output.meta.op("->>")(text("'type'")).in_(["new_token", "reissue_token"]),
         )
         .order_by(Output.index.asc())
     )
@@ -185,9 +261,7 @@ async def process_reorg(session: AsyncSession, block: Block):
         meta = output.meta
         match meta["type"]:
             case "new_token":
-                await session.execute(
-                    delete(Token).filter(Token.name == meta["name"])
-                )
+                await session.execute(delete(Token).filter(Token.name == meta["name"]))
                 removed_currencies.append(meta["name"])
             case "reissue_token":
                 token = await session.scalar(
@@ -198,26 +272,16 @@ async def process_reorg(session: AsyncSession, block: Block):
                 token.reissuable = meta["reissuable"]
 
     await session.execute(
-        delete(AddressBalance).filter(
-            AddressBalance.currency.in_(removed_currencies)
-        )
+        delete(AddressBalance).filter(AddressBalance.currency.in_(removed_currencies))
     )
 
-    await session.execute(
-        delete(Output).filter(Output.blockhash == block.blockhash)
-    )
-
-    await session.execute(
-        delete(Input).filter(Input.blockhash == block.blockhash)
-    )
+    await session.execute(delete(Output).filter(Output.blockhash == block.blockhash))
 
     await session.execute(
         delete(Transaction).filter(Transaction.blockhash == block.blockhash)
     )
 
-    await session.execute(
-        delete(Block).filter(Block.blockhash == block.blockhash)
-    )
+    await session.execute(delete(Block).filter(Block.blockhash == block.blockhash))
 
     for currency, movement in movements.items():
         for raw_address, amount in movement.items():
@@ -231,8 +295,12 @@ async def process_reorg(session: AsyncSession, block: Block):
                     Address.address == raw_address,
                 )
             )
+            assert (
+                balance is not None
+            ), f"Expected balance for ({raw_address=!r}, {currency=!r}), got None. Possible a bug inside synchronization code"
 
-            balance.balance -= Decimal(amount)
+            balance.balance -= Decimal(amount["amount"])
+            balance.locked -= Decimal(amount["locked"])
 
     new_latest = await session.scalar(
         select(Block).filter(Block.height == reorg_height - 1)

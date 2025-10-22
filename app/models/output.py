@@ -1,3 +1,4 @@
+from decimal import Decimal
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapped
@@ -15,7 +16,7 @@ class Output(Base):
     blockhash: Mapped[str] = mapped_column(String(64), index=True)
     address: Mapped[str] = mapped_column(String(70), index=True)
     txid: Mapped[str] = mapped_column(String(64), index=True)
-    amount: Mapped[Numeric] = mapped_column(Numeric(28, 8))
+    amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
     timelock: Mapped[int]
     type: Mapped[str] = mapped_column(String(64), index=True)
     script: Mapped[str]

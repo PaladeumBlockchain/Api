@@ -1,3 +1,4 @@
+import typing
 from app.settings import get_settings
 from collections import defaultdict
 from datetime import datetime
@@ -28,13 +29,9 @@ def parse_meta(spk):
             "type": spk["type"],
             "amount": spk["token"]["amount"],
             "name": spk["token"]["name"],
-            "units": (
-                spk["token"]["units"] if "units" in spk["token"] else False
-            ),
+            "units": (spk["token"]["units"] if "units" in spk["token"] else False),
             "reissuable": (
-                spk["token"]["reissuable"]
-                if "reissuable" in spk["token"]
-                else False
+                spk["token"]["reissuable"] if "reissuable" in spk["token"] else False
             ),
         }
 
@@ -56,9 +53,7 @@ async def parse_outputs(transaction_data: dict):
             amount = spk["token"]["amount"]
 
         else:
-            timelock = (
-                int(spk["asm"].split(" ", 1)[0]) if spk["type"] == "cltv" else 0
-            )
+            timelock = int(spk["asm"].split(" ", 1)[0]) if spk["type"] == "cltv" else 0
             currency = constants.DEFAULT_CURRENCY
             amount = vout["value"]
 
@@ -106,7 +101,11 @@ async def parse_inputs(transaction_data: dict):
     return inputs
 
 
-async def build_movements(settings, inputs, outputs):
+async def build_movements(
+    settings: typing.Any,
+    inputs: list[dict[str, typing.Any]],
+    outputs: list[dict[str, typing.Any]],
+):
     input_transactions_result = await make_request(
         settings.blockchain.endpoint,
         [
@@ -119,26 +118,29 @@ async def build_movements(settings, inputs, outputs):
         ],
     )
 
-    input_outputs = {}
+    input_outputs: dict[str, typing.Any] = {}
 
     for transaction_result in input_transactions_result:
         transaction_data = transaction_result["result"]
-        vin_vouts = await parse_outputs(transaction_data)
+        vin_vouts: list[dict[str, typing.Any]] = await parse_outputs(transaction_data)
 
         for vout in vin_vouts:
             input_outputs[vout["shortcut"]] = vout
 
     # Use convenient defaultdict to not bloat code with setdefault calls
-    movements: dict[str, dict[str, Decimal]] = defaultdict(
-        lambda: defaultdict(Decimal)
-    )
+    movements: dict[
+        str, dict[str, dict[typing.Literal["locked", "amount"], Decimal]]
+    ] = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
 
     for output in outputs:
         currency = output["currency"]
         address = output["address"]
         amount = output["amount"]
 
-        movements[currency][address] += amount
+        if output["timelock"]:
+            movements[currency][address]["locked"] += amount
+        else:
+            movements[currency][address]["amount"] += amount
 
     for input in inputs:  # noqa
         input_output = input_outputs[input["shortcut"]]
@@ -146,11 +148,14 @@ async def build_movements(settings, inputs, outputs):
         address = input_output["address"]
         amount = input_output["amount"]
 
-        movements[currency][address] -= amount
+        movements[currency][address]["amount"] -= amount
 
     return {
         currency: {
-            address: float(amount)
+            address: {
+                "locked": float(amount["locked"]),
+                "amount": float(amount["amount"]),
+            }
             for address, amount in currency_movement.items()
         }
         for currency, currency_movement in movements.items()
@@ -183,6 +188,9 @@ async def parse_transactions(txids: list[str], stake: bool = False):
     for transaction_result in transactions_result:
         transaction_data = transaction_result["result"]
 
+        index = txids.index(transaction_data["txid"])
+        coinbase = index == 0 and not stake
+
         addresses = list(
             set(
                 address
@@ -201,6 +209,8 @@ async def parse_transactions(txids: list[str], stake: bool = False):
                 "locktime": transaction_data["locktime"],
                 "version": transaction_data["version"],
                 "timestamp": timestamp,
+                "index": index,
+                "coinbase": coinbase,
                 "size": transaction_data["size"],
                 "txid": transaction_data["txid"],
             }

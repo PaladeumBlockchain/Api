@@ -46,3 +46,5 @@ reportUnusedCallResult = false
 enableTypeIgnoreComments = true
 reportCallInDefaultInitializer = false
 reportIgnoreCommentWithoutRule = false
+reportUnannotatedClassAttribute = false
+reportUninitializedInstanceVariable = false

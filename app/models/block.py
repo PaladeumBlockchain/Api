@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy import String
 from datetime import datetime
 from .base import Base
+import typing
 
 
 class Block(Base):
@@ -12,12 +13,10 @@ class Block(Base):
     blockhash: Mapped[str] = mapped_column(String(64), index=True, unique=True)
     transactions: Mapped[list[str]] = mapped_column(ARRAY(String))
     height: Mapped[int] = mapped_column(index=True)
-    movements: Mapped[dict] = mapped_column(JSONB)
+    movements: Mapped[dict[str, typing.Any]] = mapped_column(JSONB)
     created: Mapped[datetime]
     timestamp: Mapped[int]
-    prev_blockhash: Mapped[str] = mapped_column(
-        String(64), index=True, nullable=True
-    )
+    prev_blockhash: Mapped[str] = mapped_column(String(64), index=True, nullable=True)
 
     @property
     def tx(self) -> int:
