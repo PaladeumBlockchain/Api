@@ -99,3 +99,4 @@ class BalanceResponse(CustomModel):
     currency: str
     units: int
     balance: Satoshi
+    locked: Satoshi
