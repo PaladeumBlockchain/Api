@@ -37,6 +37,7 @@ async def create_transaction(
         version=version,
         amount=amount,
         addresses=addresses or [secrets.token_hex(32), secrets.token_hex(32)],
+        coinbase=False,
     )
 
     session.add(transaction)
