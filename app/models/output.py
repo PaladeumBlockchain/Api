@@ -17,11 +17,11 @@ class Output(Base):
     address: Mapped[str] = mapped_column(String(70), index=True)
     txid: Mapped[str] = mapped_column(String(64), index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
-    timelock: Mapped[int]
+    timelock: Mapped[int] = mapped_column(index=True)
     type: Mapped[str] = mapped_column(String(64), index=True)
     script: Mapped[str]
     asm: Mapped[str]
-    spent: Mapped[bool]
+    spent: Mapped[bool] = mapped_column(index=True)
     index: Mapped[int]
 
     meta: Mapped[dict] = mapped_column(JSONB)
