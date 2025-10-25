@@ -25,3 +25,5 @@ class Output(Base):
     index: Mapped[int]
 
     meta: Mapped[dict] = mapped_column(JSONB)
+
+    unlocked: Mapped[bool] = mapped_column(default=False, index=True)
