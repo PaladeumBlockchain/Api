@@ -24,40 +24,6 @@ async def process_block(session: AsyncSession, data: dict):
     block = Block(**data["block"])
     session.add(block)
 
-    locked_outputs = await session.execute(
-        select(func.sum(Output.amount), Output.address, Output.currency)
-        .filter(
-            (Output.timelock == block.height)
-            | (
-                (Output.spent == False)
-                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock <= int(block.created.timestamp()))
-            )
-        )
-        .group_by(Output.address, Output.currency)
-    )
-
-    for amount, address, currency in locked_outputs:
-        address = await session.scalar(
-            select(Address).filter(Address.address == address)
-        )
-        if address is None:
-            continue
-
-        address_balance = await session.scalar(
-            select(AddressBalance).filter(
-                AddressBalance.address == address,
-                AddressBalance.currency == currency,
-            )
-        )
-        if not address_balance:
-            address_balance = AddressBalance(
-                address=address, balance=Decimal(), locked=Decimal()
-            )
-
-        address_balance.balance += amount
-        address_balance.locked -= amount
-
     transaction_currencies: dict[str, list[str]] = defaultdict(list)
     transaction_amounts: dict[str, dict[str, Decimal]] = defaultdict(
         lambda: defaultdict(Decimal)
@@ -110,6 +76,7 @@ async def process_block(session: AsyncSession, data: dict):
                     "asm": output_data["asm"],
                     "index": output_data["index"],
                     "meta": output_data["meta"],
+                    "unlocked": output_data["timelock"] == 0,
                 }
             )
         )
@@ -193,6 +160,61 @@ async def process_block(session: AsyncSession, data: dict):
             balance.balance += Decimal(str(amount["amount"]))
             balance.locked += Decimal(str(amount["locked"]))
 
+    locked_outputs = await session.execute(
+        select(Output)
+        .filter(
+            ((Output.unlocked == False) & (Output.timelock == block.height))
+            | (
+                (Output.spent == False)
+                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                & (Output.timelock <= int(block.created.timestamp()))
+            ),
+        )
+        .order_by(Output.address, Output.currency)
+    )
+
+    # Do little caching :>
+
+    # address: Address
+    _addresses: dict[str, Address] = {}
+    # (address, currency): AddressBalance
+    _address_balances: dict[tuple[str, str], AddressBalance] = {}
+
+    for output in locked_outputs:
+        if output.address in _addresses:
+            address = _addresses[output.address]
+        else:
+            address = await session.scalar(
+                select(Address).filter(Address.address == output.address)
+            )
+            if address is None:
+                continue
+
+            _addresses[output.address] = address
+
+        balance_key = (output.address, output.currency)
+        if balance_key in _address_balances:
+            address_balance = _address_balances[balance_key]
+        else:
+            address_balance = await session.scalar(
+                select(AddressBalance).filter(
+                    AddressBalance.address == address,
+                    AddressBalance.currency == output.currency,
+                )
+            )
+            if not address_balance:
+                address_balance = AddressBalance(
+                    address=address, balance=Decimal(), locked=Decimal()
+                )
+                session.add(address_balance)
+
+            _address_balances[balance_key] = address_balance
+
+        # Unlock balance and mark output as unlocked
+        address_balance.balance += output.amount
+        address_balance.locked -= output.amount
+        output.unlocked = True
+
     return block
 
 
@@ -243,6 +265,60 @@ async def process_reorg(session: AsyncSession, block: Block):
 
         address_balance.balance -= amount
         address_balance.locked += amount
+
+    locked_outputs = await session.execute(
+        select(Output)
+        .filter(
+            ((Output.unlocked == True) & (Output.timelock == block.height))
+            | (
+                (Output.spent == False)
+                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                & (Output.timelock >= int(block.created.timestamp()))
+            ),
+        )
+        .order_by(Output.address, Output.currency)
+    )
+
+    # Do little caching :>
+
+    # address: Address
+    _addresses: dict[str, Address] = {}
+    # (address, currency): AddressBalance
+    _address_balances: dict[tuple[str, str], AddressBalance] = {}
+
+    for output in locked_outputs:
+        if output.address in _addresses:
+            address = _addresses[output.address]
+        else:
+            address = await session.scalar(
+                select(Address).filter(Address.address == output.address)
+            )
+            if address is None:
+                continue
+
+            _addresses[output.address] = address
+
+        balance_key = (output.address, output.currency)
+        if balance_key in _address_balances:
+            address_balance = _address_balances[balance_key]
+        else:
+            address_balance = await session.scalar(
+                select(AddressBalance).filter(
+                    AddressBalance.address == address,
+                    AddressBalance.currency == output.currency,
+                )
+            )
+
+            assert (
+                address_balance is not None
+            ), f"Expected balance for ({output.address=!r}, {output.currency=!r}), got None. Possible a bug inside synchronization code"
+
+            _address_balances[balance_key] = address_balance
+
+        # Re-lock balance and mark output as locked again
+        address_balance.balance -= output.amount
+        address_balance.locked += output.amount
+        output.unlocked = False
 
     outputs = await session.scalars(
         select(Output)
