@@ -160,7 +160,7 @@ async def process_block(session: AsyncSession, data: dict):
             balance.balance += Decimal(str(amount["amount"]))
             balance.locked += Decimal(str(amount["locked"]))
 
-    locked_outputs = await session.execute(
+    locked_outputs = await session.scalars(
         select(Output)
         .filter(
             ((Output.unlocked == False) & (Output.timelock == block.height))
@@ -234,7 +234,7 @@ async def process_reorg(session: AsyncSession, block: Block):
         update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=False)
     )
 
-    locked_outputs = await session.execute(
+    locked_outputs = await session.scalars(
         select(func.sum(Output.amount), Output.address, Output.currency)
         .filter(
             (Output.timelock == block.height)
