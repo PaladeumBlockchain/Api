@@ -22,9 +22,7 @@ def create_app(init_db: bool = True) -> FastAPI:
             with suppress(Exception):
                 await sessionmanager.close()
 
-    fu.validation_error_response_definition = (
-        errors.ErrorResponse.model_json_schema()
-    )
+    fu.validation_error_response_definition = errors.ErrorResponse.model_json_schema()
 
     app = FastAPI(
         title="API Docs",

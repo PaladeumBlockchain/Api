@@ -163,12 +163,15 @@ async def process_block(session: AsyncSession, data: dict):
     locked_outputs = await session.scalars(
         select(Output)
         .filter(
-            ((Output.unlocked == False) & (Output.timelock == block.height))
-            | (
-                (Output.spent == False)
-                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock <= int(block.created.timestamp()))
-            ),
+            (Output.unlocked == False)
+            & (
+                (Output.timelock == block.height)
+                | (
+                    (Output.spent == False)
+                    & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                    & (Output.timelock <= int(block.created.timestamp()))
+                )
+            )
         )
         .order_by(Output.address, Output.currency)
     )
@@ -234,47 +237,18 @@ async def process_reorg(session: AsyncSession, block: Block):
         update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=False)
     )
 
-    locked_outputs = await session.scalars(
-        select(func.sum(Output.amount), Output.address, Output.currency)
-        .filter(
-            (Output.timelock == block.height)
-            | (
-                (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock >= int(block.created.timestamp()))
-            )
-        )
-        .group_by(Output.address, Output.currency)
-    )
-
-    for amount, address, currency in locked_outputs:
-        address = await session.scalar(
-            select(Address).filter(Address.address == address)
-        )
-        if address is None:
-            continue
-
-        address_balance = await session.scalar(
-            select(AddressBalance).filter(
-                AddressBalance.address == address,
-                AddressBalance.currency == currency,
-            )
-        )
-        assert (
-            address_balance is not None
-        ), f"Expected balance for ({address=!r}, {currency=!r}), got None. Possible a bug inside synchronization code"
-
-        address_balance.balance -= amount
-        address_balance.locked += amount
-
     locked_outputs = await session.execute(
         select(Output)
         .filter(
-            ((Output.unlocked == True) & (Output.timelock == block.height))
-            | (
-                (Output.spent == False)
-                & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
-                & (Output.timelock >= int(block.created.timestamp()))
-            ),
+            (Output.unlocked == True)
+            & (
+                (Output.timelock == block.height)
+                | (
+                    (Output.spent == False)
+                    & (Output.timelock >= constants.TIMELOCK_TIMESTAMP_TRESHOLD)
+                    & (Output.timelock >= int(block.created.timestamp()))
+                )
+            )
         )
         .order_by(Output.address, Output.currency)
     )
