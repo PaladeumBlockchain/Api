@@ -31,6 +31,8 @@ def create_app(init_db: bool = True) -> FastAPI:
         openapi_tags=[
             {"name": "Blocks"},
             {"name": "Transactions"},
+            {"name": "Addresses"},
+            {"name": "Wallet"},
         ],
     )
 
@@ -51,7 +53,9 @@ def create_app(init_db: bool = True) -> FastAPI:
     from .transactions import router as db_router
     from .blocks import router as blocks_router
     from .address import router as address_router
+    from .wallet import router as wallet_router
 
+    app.include_router(wallet_router)
     app.include_router(address_router)
     app.include_router(blocks_router)
     app.include_router(db_router)
