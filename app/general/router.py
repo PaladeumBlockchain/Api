@@ -13,4 +13,4 @@ async def total_supply():
 
 @router.get("/plain/supply/circulating", response_class=PlainTextResponse)
 async def circulating_supply():
-    return str(TOTAL_SUPPLY * 0.5)
+    return str(int(TOTAL_SUPPLY * 0.5))
