@@ -22,7 +22,9 @@ def create_app(init_db: bool = True) -> FastAPI:
             with suppress(Exception):
                 await sessionmanager.close()
 
-    fu.validation_error_response_definition = errors.ErrorResponse.model_json_schema()
+    fu.validation_error_response_definition = (
+        errors.ErrorResponse.model_json_schema()
+    )
 
     app = FastAPI(
         title="API Docs",
@@ -33,6 +35,7 @@ def create_app(init_db: bool = True) -> FastAPI:
             {"name": "Transactions"},
             {"name": "Addresses"},
             {"name": "Wallet"},
+            {"name": "General"},
         ],
     )
 
@@ -51,13 +54,15 @@ def create_app(init_db: bool = True) -> FastAPI:
     )
 
     from .transactions import router as db_router
-    from .blocks import router as blocks_router
     from .address import router as address_router
+    from .general import router as general_router
+    from .blocks import router as blocks_router
     from .wallet import router as wallet_router
 
-    app.include_router(wallet_router)
     app.include_router(address_router)
+    app.include_router(general_router)
     app.include_router(blocks_router)
+    app.include_router(wallet_router)
     app.include_router(db_router)
 
     @app.get("/ping")
