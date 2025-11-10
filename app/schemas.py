@@ -90,6 +90,8 @@ class TransactionResponse(CustomModel):
     inputs: list[InputFullResponse]
     confirmations: int
     fee: Satoshi
+    coinbase: bool
+    coinstake: bool
 
 
 TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
