@@ -23,7 +23,7 @@ async def get_token_units(session: AsyncSession, currency: str) -> int:
 async def load_tx_details(
     session: AsyncSession,
     transaction: Transaction | None,
-    latest_block: Block = None,
+    latest_block: Block | None = None,
 ) -> Transaction | None:
 
     if transaction is None:
@@ -40,9 +40,7 @@ async def load_tx_details(
 
     transaction.outputs = []
     for output in await session.scalars(
-        select(Output)
-        .filter(Output.txid == transaction.txid)
-        .order_by(Output.index)
+        select(Output).filter(Output.txid == transaction.txid).order_by(Output.index)
     ):
         output: Output
         output.units = await get_token_units(session, output.currency)
@@ -73,17 +71,15 @@ async def load_tx_details(
         if output.currency == "PLB":
             transaction.fee += output.amount
 
+    transaction.coinstake = transaction.fee < 0
+
     return transaction
 
 
-async def get_transaction_by_txid(
-    session: AsyncSession, txid: str
-) -> Transaction:
+async def get_transaction_by_txid(session: AsyncSession, txid: str) -> Transaction:
     return await load_tx_details(
         session,
-        await session.scalar(
-            select(Transaction).filter(Transaction.txid == txid)
-        ),
+        await session.scalar(select(Transaction).filter(Transaction.txid == txid)),
     )
 
 
@@ -113,9 +109,7 @@ async def get_transactions(
         )
     ):
         transactions.append(
-            await load_tx_details(
-                session, transaction, latest_block=latest_block
-            )
+            await load_tx_details(session, transaction, latest_block=latest_block)
         )
 
     return transactions
@@ -179,8 +173,6 @@ async def get_mempool_transactions(session: AsyncSession) -> list[dict]:
         return []
 
     return [
-        await load_mempool_tx_details(
-            session, transaction, mempool.raw["outputs"]
-        )
+        await load_mempool_tx_details(session, transaction, mempool.raw["outputs"])
         for transaction in mempool.raw["transactions"]
     ]

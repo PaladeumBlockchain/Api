@@ -9,6 +9,7 @@ from async_asgi_testclient import TestClient
 from pytest_postgresql import factories
 from sqlalchemy import make_url, delete
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import sessionmanager, get_session
 from app.settings import get_settings
@@ -105,9 +106,7 @@ async def block(session) -> Block:
 
 @pytest.fixture
 async def block_transaction(session, block) -> Transaction:
-    transaction = await helpers.create_transaction(
-        session, blockhash=block.blockhash
-    )
+    transaction = await helpers.create_transaction(session, blockhash=block.blockhash)
 
     block.transactions = [transaction.txid]
 
@@ -123,13 +122,29 @@ async def address(session) -> Address:
 
 @pytest.fixture
 async def address_utxo(session, address) -> Output:
-    return await helpers.create_output(
-        session, address=address.address, spent=False
-    )
+    return await helpers.create_output(session, address=address.address, spent=False)
 
 
 @pytest.fixture
 async def address_transaction(session, address) -> Transaction:
-    return await helpers.create_transaction(
-        session, addresses=[address.address]
-    )
+    return await helpers.create_transaction(session, addresses=[address.address])
+
+
+@pytest.fixture
+def currency():
+    return "PLB"
+
+
+@pytest.fixture
+async def addresses(session: AsyncSession):
+    return [await helpers.create_address(session) for _ in range(10)]
+
+
+@pytest.fixture
+async def addresses_balances(
+    session: AsyncSession, addresses: list[Address], currency: str
+):
+    return [
+        await helpers.create_address_balance(session, address, currency, (20, 88))
+        for address in addresses
+    ]

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, UTC
 from typing import Sequence
+import typing
 import math
 
 from app import constants
@@ -28,7 +29,7 @@ def token_type(name):
 
 
 # Helper function for pagination
-def pagination(page, size=constants.DEFAULT_PAGINATION_SIZE):
+def pagination(page: int, size: int = constants.DEFAULT_PAGINATION_SIZE):
     """limit, offset = pagination(:page, :page_size)"""
     offset = (size * page) - size
 
@@ -45,8 +46,8 @@ def pagination_dict(total, page, limit):
 
 
 def paginated_response(
-    items: Sequence, total: int, page: int, limit: int
-) -> dict:
+    items: Sequence[typing.Any], total: int, page: int, limit: int
+) -> dict[str, typing.Any]:
     return {
         "pagination": pagination_dict(total, page, limit),
         "list": items,
