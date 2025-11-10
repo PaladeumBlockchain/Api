@@ -1,8 +1,10 @@
+from decimal import Decimal
+import random
 import secrets
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Transaction, Block, Address, Output
+from app.models import AddressBalance, Transaction, Block, Address, Output
 from app.utils import utcnow, to_timestamp
 
 
@@ -126,3 +128,22 @@ async def create_output(
     await session.commit()
 
     return output
+
+
+async def create_address_balance(
+    session: AsyncSession,
+    address: Address,
+    currency: str,
+    balance: int | tuple[int, int],
+):
+    if isinstance(balance, tuple):
+        balance = random.randint(*balance)
+
+    address_balance = AddressBalance(
+        address=address, balance=Decimal(balance), currency=currency
+    )
+
+    session.add(address_balance)
+    await session.commit()
+
+    return address_balance
