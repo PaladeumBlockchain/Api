@@ -117,6 +117,27 @@ async def process_block(session: AsyncSession, data: dict[str, typing.Any]):
         update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=True)
     )
 
+    # NOTE: Block reward calculation happens here
+
+    # If it is stake - first tx won't be in transaction_fees
+    first_tx = block.transactions[0]
+    if first_tx in transaction_fees:
+        base_reward = abs(transaction_fees[first_tx])
+        tx_offset = 1
+    else:
+        base_reward = abs(transaction_fees[block.transactions[1]])
+        tx_offset = 2
+
+    rest_reward = Decimal()
+    for txid in block.transactions[tx_offset:]:
+        fee = transaction_fees[txid]
+        if fee < 0:
+            continue
+
+        rest_reward += fee
+
+    block.reward = base_reward + rest_reward
+
     # Add new transactions to the session
     session.add_all(
         [
