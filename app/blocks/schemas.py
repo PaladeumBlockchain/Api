@@ -1,4 +1,4 @@
-from app.schemas import CustomModel, datetime_pd, PaginatedResponse
+from app.schemas import CustomModel, Satoshi, datetime_pd, PaginatedResponse
 
 
 class BlockResponse(CustomModel):
@@ -6,6 +6,7 @@ class BlockResponse(CustomModel):
     blockhash: str
     height: int
     tx: int
+    reward: Satoshi
 
 
 BlockPaginatedResponse = PaginatedResponse[BlockResponse]
