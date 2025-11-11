@@ -34,8 +34,6 @@ async def load_tx_details(
 
     transaction.confirmations = latest_block.height - transaction.height
 
-    transaction.fee = 0
-
     output_shortcuts: dict[str, Output] = {}
 
     transaction.outputs = []
@@ -47,9 +45,6 @@ async def load_tx_details(
 
         output_shortcuts[output.shortcut] = output
         transaction.outputs.append(output)
-
-        if output.currency == "PLB":
-            transaction.fee -= output.amount
 
     transaction.inputs = []
     for input_ in await session.scalars(
@@ -67,9 +62,6 @@ async def load_tx_details(
         input_.address = output.address
 
         transaction.inputs.append(input_)
-
-        if output.currency == "PLB":
-            transaction.fee += output.amount
 
     transaction.coinstake = transaction.fee < 0
 
