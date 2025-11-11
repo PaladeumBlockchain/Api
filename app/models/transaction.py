@@ -1,8 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String
+from sqlalchemy import Numeric, String
 
 from .base import Base
 
@@ -24,3 +25,5 @@ class Transaction(Base):
     amount: Mapped[dict[str, float]] = mapped_column(JSONB, default={})
 
     coinbase: Mapped[bool]
+
+    fee: Mapped[Decimal] = mapped_column(Numeric(28, 8), server_default="0")

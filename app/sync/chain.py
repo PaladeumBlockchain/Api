@@ -1,3 +1,4 @@
+import typing
 from sqlalchemy import func, select, update, delete, desc, text
 from app import constants
 from app.parser import make_request, parse_block
@@ -19,7 +20,7 @@ from app.models import (
 )
 
 
-async def process_block(session: AsyncSession, data: dict):
+async def process_block(session: AsyncSession, data: dict[str, typing.Any]):
     # Add new block
     block = Block(**data["block"])
     session.add(block)
@@ -28,6 +29,7 @@ async def process_block(session: AsyncSession, data: dict):
     transaction_amounts: dict[str, dict[str, Decimal]] = defaultdict(
         lambda: defaultdict(Decimal)
     )
+    transaction_fees: dict[str, Decimal] = defaultdict(Decimal)
 
     # Add new outputs to the session
     for output_data in data["outputs"]:
@@ -47,9 +49,12 @@ async def process_block(session: AsyncSession, data: dict):
                     token = await session.scalar(
                         select(Token).filter(Token.name == meta["name"])
                     )
-                    token.amount += Decimal(meta["amount"])
-                    token.units = meta["units"]
-                    token.reissuable = meta["reissuable"]
+                    if token is not None:
+                        token.amount += Decimal(meta["amount"])
+                        token.units = meta["units"]
+                        token.reissuable = meta["reissuable"]
+                    else:
+                        print("reissue_token failed, token not found:", output_data)
 
         txid = output_data["txid"]
         currency = output_data["currency"]
@@ -59,6 +64,9 @@ async def process_block(session: AsyncSession, data: dict):
             currencies.append(currency)
 
         transaction_amounts[txid][currency] += output_data["amount"]
+
+        if output_data["currency"] == constants.DEFAULT_CURRENCY:
+            transaction_fees[txid] -= output_data["amount"]
 
         session.add(
             Output(
@@ -81,6 +89,34 @@ async def process_block(session: AsyncSession, data: dict):
             )
         )
 
+    # Add new inputs to the session and collect spent output shortcuts
+    input_shortcuts: dict[str, str] = {}
+    for input_data in data["inputs"]:
+        input_shortcuts[input_data["shortcut"]] = input_data["txid"]
+        session.add(
+            Input(
+                **{
+                    "shortcut": input_data["shortcut"],
+                    "blockhash": input_data["blockhash"],
+                    "index": input_data["index"],
+                    "txid": input_data["txid"],
+                    "source_txid": input_data["source_txid"],
+                }
+            )
+        )
+
+    for output in await session.scalars(
+        select(Output).filter(
+            Output.shortcut.in_(input_shortcuts),
+            Output.currency == constants.DEFAULT_CURRENCY,
+        )
+    ):
+        transaction_fees[input_shortcuts[output.shortcut]] += output.amount
+
+    await session.execute(
+        update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=True)
+    )
+
     # Add new transactions to the session
     session.add_all(
         [
@@ -96,6 +132,7 @@ async def process_block(session: AsyncSession, data: dict):
                     "txid": transaction_data["txid"],
                     "currencies": transaction_currencies[transaction_data["txid"]],
                     "height": block.height,
+                    "fee": transaction_fees[transaction_data["txid"]],
                     "coinbase": transaction_data["coinbase"],
                     "amount": {
                         currency: float(amount)
@@ -107,27 +144,6 @@ async def process_block(session: AsyncSession, data: dict):
             )
             for transaction_data in data["transactions"]
         ]
-    )
-
-    # Add new inputs to the session and collect spent output shortcuts
-    input_shortcuts = []
-    for input_data in data["inputs"]:
-        input_shortcuts.append(input_data["shortcut"])
-        session.add(
-            Input(
-                **{
-                    "shortcut": input_data["shortcut"],
-                    "blockhash": input_data["blockhash"],
-                    "index": input_data["index"],
-                    "txid": input_data["txid"],
-                    "source_txid": input_data["source_txid"],
-                }
-            )
-        )
-
-    # Mark outputs used in inputs as spent
-    await session.execute(
-        update(Output).filter(Output.shortcut.in_(input_shortcuts)).values(spent=True)
     )
 
     for currency, movement in data["block"]["movements"].items():
