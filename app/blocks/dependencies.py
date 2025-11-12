@@ -27,3 +27,14 @@ async def require_block(
         raise Abort("blocks", "not-found")
 
     return block
+
+
+async def require_block_by_height(
+    height: int, session: AsyncSession = Depends(get_session)
+) -> Block:
+    block = await service.get_block_by_height(session, height)
+
+    if block is None:
+        raise Abort("blocks", "not-found")
+
+    return block
