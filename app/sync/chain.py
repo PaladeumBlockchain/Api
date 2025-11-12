@@ -43,6 +43,8 @@ async def process_block(session: AsyncSession, data: dict[str, typing.Any]):
                         units=meta["units"],
                         reissuable=meta["reissuable"],
                         amount=Decimal(meta["amount"]),
+                        height=block.height,
+                        blockhash=block.blockhash,
                     )
                     session.add(token)
                 case "reissue_token":
@@ -119,11 +121,17 @@ async def process_block(session: AsyncSession, data: dict[str, typing.Any]):
 
     # NOTE: Block reward calculation happens here
 
-    # If it is stake - first tx won't be in transaction_fees
     first_tx = block.transactions[0]
     if first_tx in transaction_fees:
         base_reward = abs(transaction_fees[first_tx])
         tx_offset = 1
+
+    # If there's only one tx in block and it is not on the fee list
+    elif block.tx == 1:
+        base_reward = Decimal()
+        tx_offset = 1
+
+    # If it is stake - first tx won't be in transaction_fees
     else:
         base_reward = abs(transaction_fees[block.transactions[1]])
         tx_offset = 2

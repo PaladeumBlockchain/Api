@@ -16,14 +16,14 @@ def to_timestamp(date: datetime | None) -> int | None:
     return int(date.timestamp()) if date else None
 
 
-def token_type(name):
+def token_type(name: str):
     if "#" in name:
         return "unique"
     if "/" in name:
         return "sub"
     if name[0] == "@":
         return "username"
-    if name[0] == "!":
+    if name[-1] == "!":
         return "owner"
     return "root"
 
@@ -56,3 +56,29 @@ def paginated_response(
 
 def to_satoshi(x: float) -> int:
     return int(x * math.pow(10, 8))
+
+
+def get_token_icon(name: str):
+    cache_fix = 8
+
+    match name:
+        case "USDT":
+            return f"https://api2.paladeum.io/static/USDT.svg?{cache_fix}"
+
+        case "USD":
+            return f"https://api2.paladeum.io/static/USD.svg?{cache_fix}"
+
+        case "JPY":
+            return f"https://api2.paladeum.io/static/JPY.svg?{cache_fix}"
+
+        case "KRW":
+            return f"https://api2.paladeum.io/static/KRW.svg?{cache_fix}"
+
+        case "PNC":
+            return f"https://api2.paladeum.io/static/PNC.png?{cache_fix}"
+
+        case "RCT":
+            return f"https://api2.paladeum.io/static/RCT.png?{cache_fix}"
+
+        case _:
+            return None
