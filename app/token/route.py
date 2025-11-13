@@ -27,6 +27,13 @@ async def list_tokens(
     return paginated_response(items, total, page, limit)
 
 
+@router.get("/listnames", response_model=list[str])
+async def list_tokens_names(session: AsyncSession = Depends(get_session)):
+    items = await service.list_token_names(session)
+
+    return items
+
+
 @router.get("/{name}", response_model=FullTokenResponse)
 async def token_by_name(token: Token = Depends(require_full_token)):
     return token

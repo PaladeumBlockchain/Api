@@ -29,6 +29,17 @@ async def list_tokens(session: AsyncSession, offset: int, limit: int):
     ]
 
 
+async def list_token_names(session: AsyncSession):
+    items = await session.scalars(
+        select(Token.name)
+        .filter(Token.type.in_(("root", "sub")))
+        .order_by(Token.height.asc())
+    )
+
+    # Little shenanigan to set attribute in comprehension
+    return items.all()
+
+
 async def get_full_token(session: AsyncSession, name: str):
     token = await session.scalar(select(Token).filter(Token.name == name))
 

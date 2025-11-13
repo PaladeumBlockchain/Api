@@ -1,8 +1,8 @@
-from app.schemas import CustomModel
+from app.schemas import CustomModel, Satoshi
 
 
 class HolderResponse(CustomModel):
     address: str
-    balance: float
+    balance: Satoshi
     percentage: float
     txcount: int

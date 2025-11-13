@@ -45,6 +45,29 @@ async def get_block_by_height(block: Block = Depends(require_block_by_height)):
     return block
 
 
+@router.get(
+    "/height/{height}/transactions", response_model=TransactionPaginatedResponse
+)
+async def get_block_by_height(
+    block: Block = Depends(require_block_by_height),
+    page: int = Depends(get_page),
+    session: AsyncSession = Depends(get_session),
+):
+    limit, offset = pagination(page)
+
+    total = await service.count_block_transactions(session, block.blockhash)
+    transactions = await service.get_block_transactions(
+        session, block.blockhash, offset, limit
+    )
+
+    return paginated_response(
+        transactions,
+        total=total,
+        page=page,
+        limit=limit,
+    )
+
+
 @router.get("/{hash_}/transactions", response_model=TransactionPaginatedResponse)
 async def get_block_transactions(
     hash_: str,
