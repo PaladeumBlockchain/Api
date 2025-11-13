@@ -29,8 +29,11 @@ async def get_block_by_height(session: AsyncSession, height: int) -> Block | Non
 
 
 async def count_block_transactions(session: AsyncSession, hash_: str):
-    return await session.scalar(
-        select(func.count(Transaction.id)).filter(Transaction.blockhash == hash_)
+    return (
+        await session.scalar(
+            select(func.count(Transaction.id)).filter(Transaction.blockhash == hash_)
+        )
+        or 0
     )
 
 

@@ -63,22 +63,22 @@ def get_token_icon(name: str):
 
     match name:
         case "USDT":
-            return f"https://api2.paladeum.io/static/USDT.svg?{cache_fix}"
+            return f"https://apiv2.paladeum.io/static/USDT.svg?{cache_fix}"
 
         case "USD":
-            return f"https://api2.paladeum.io/static/USD.svg?{cache_fix}"
+            return f"https://apiv2.paladeum.io/static/USD.svg?{cache_fix}"
 
         case "JPY":
-            return f"https://api2.paladeum.io/static/JPY.svg?{cache_fix}"
+            return f"https://apiv2.paladeum.io/static/JPY.svg?{cache_fix}"
 
         case "KRW":
-            return f"https://api2.paladeum.io/static/KRW.svg?{cache_fix}"
+            return f"https://apiv2.paladeum.io/static/KRW.svg?{cache_fix}"
 
         case "PNC":
-            return f"https://api2.paladeum.io/static/PNC.png?{cache_fix}"
+            return f"https://apiv2.paladeum.io/static/PNC.png?{cache_fix}"
 
         case "RCT":
-            return f"https://api2.paladeum.io/static/RCT.png?{cache_fix}"
+            return f"https://apiv2.paladeum.io/static/RCT.png?{cache_fix}"
 
         case _:
             return None
