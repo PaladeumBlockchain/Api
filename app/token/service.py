@@ -36,7 +36,6 @@ async def list_token_names(session: AsyncSession):
         .order_by(Token.height.asc())
     )
 
-    # Little shenanigan to set attribute in comprehension
     return items.all()
 
 
