@@ -1,10 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
 
+from .dependencies import require_block_by_height, require_latest_block, require_block
 from .schemas import BlockPaginatedResponse, BlockResponse
 from app.schemas import TransactionPaginatedResponse
 from app.utils import pagination, paginated_response
-from .dependencies import require_latest_block, require_block
 from app.dependencies import get_page
 from app.database import get_session
 from app.models import Block
@@ -40,9 +40,12 @@ async def get_block(block: Block = Depends(require_block)):
     return block
 
 
-@router.get(
-    "/{hash_}/transactions", response_model=TransactionPaginatedResponse
-)
+@router.get("/height/{height}", response_model=BlockResponse)
+async def get_block_by_height(block: Block = Depends(require_block_by_height)):
+    return block
+
+
+@router.get("/{hash_}/transactions", response_model=TransactionPaginatedResponse)
 async def get_block_transactions(
     hash_: str,
     page: int = Depends(get_page),
@@ -51,9 +54,7 @@ async def get_block_transactions(
     limit, offset = pagination(page)
 
     total = await service.count_block_transactions(session, hash_)
-    transactions = await service.get_block_transactions(
-        session, hash_, offset, limit
-    )
+    transactions = await service.get_block_transactions(session, hash_, offset, limit)
 
     return paginated_response(
         transactions,

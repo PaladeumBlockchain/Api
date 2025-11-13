@@ -1,10 +1,12 @@
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager, suppress
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .database import sessionmanager
 import fastapi.openapi.utils as fu
 from .settings import get_settings
 from fastapi import FastAPI
+from pathlib import Path
 from . import errors
 
 
@@ -34,6 +36,7 @@ def create_app(init_db: bool = True) -> FastAPI:
             {"name": "Addresses"},
             {"name": "Wallet"},
             {"name": "Holders"},
+            {"name": "Tokens"},
             {"name": "General"},
         ],
     )
@@ -52,13 +55,21 @@ def create_app(init_db: bool = True) -> FastAPI:
         errors.validation_handler,
     )
 
+    app.mount(
+        "/static",
+        StaticFiles(directory=Path(__file__).parent / "static"),
+        "Static media",
+    )
+
     from .transactions import router as db_router
     from .address import router as address_router
     from .general import router as general_router
     from .blocks import router as blocks_router
     from .wallet import router as wallet_router
     from .holders import router as holders_router
+    from .token import router as token_router
 
+    app.include_router(token_router)
     app.include_router(holders_router)
     app.include_router(address_router)
     app.include_router(general_router)

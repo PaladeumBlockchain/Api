@@ -14,3 +14,5 @@ class Token(Base):
     reissuable: Mapped[bool]
     units: Mapped[int]
     type: Mapped[str] = mapped_column(String(64), index=True)
+    height: Mapped[int] = mapped_column(index=True)
+    blockhash: Mapped[str] = mapped_column(String(64), index=True)

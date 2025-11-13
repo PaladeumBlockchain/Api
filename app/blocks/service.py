@@ -5,9 +5,7 @@ from app.models import Block, Transaction
 
 
 async def get_latest_block(session: AsyncSession) -> Block:
-    return await session.scalar(
-        select(Block).order_by(Block.height.desc()).limit(1)
-    )
+    return await session.scalar(select(Block).order_by(Block.height.desc()).limit(1))
 
 
 async def count_blocks(session: AsyncSession) -> int:
@@ -22,15 +20,17 @@ async def get_blocks(
     )
 
 
-async def get_block_by_hash(session: AsyncSession, hash_: str) -> Block:
+async def get_block_by_hash(session: AsyncSession, hash_: str) -> Block | None:
     return await session.scalar(select(Block).filter(Block.blockhash == hash_))
+
+
+async def get_block_by_height(session: AsyncSession, height: int) -> Block | None:
+    return await session.scalar(select(Block).filter(Block.height == height))
 
 
 async def count_block_transactions(session: AsyncSession, hash_: str):
     return await session.scalar(
-        select(func.count(Transaction.id)).filter(
-            Transaction.blockhash == hash_
-        )
+        select(func.count(Transaction.id)).filter(Transaction.blockhash == hash_)
     )
 
 
@@ -47,8 +47,6 @@ async def get_block_transactions(
         .offset(offset)
         .limit(limit),
     ):
-        transactions.append(
-            await load_tx_details(session, transaction, latest_block)
-        )
+        transactions.append(await load_tx_details(session, transaction, latest_block))
 
     return transactions
