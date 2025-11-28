@@ -124,6 +124,11 @@ async def load_mempool_tx_details(
     transaction["amount"] = {}
     transaction["fee"] = Decimal(0)
 
+    # Mempool transactions doesn't have these fields
+    # But they are required by response schema
+    transaction["coinstake"] = False
+    transaction["coinbase"] = False
+
     for output in transaction["outputs"]:
         output["units"] = await get_token_units(session, output["currency"])
 
