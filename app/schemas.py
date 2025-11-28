@@ -1,5 +1,5 @@
-from typing import Annotated, TypeVar, Generic
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated, TypeVar, Generic
 from datetime import datetime, timedelta
 from pydantic import PlainSerializer
 from app import utils
