@@ -1,5 +1,5 @@
 from typing import Annotated, TypeVar, Generic
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime, timedelta
 from pydantic import PlainSerializer
 from app import utils
@@ -90,8 +90,8 @@ class TransactionResponse(CustomModel):
     inputs: list[InputFullResponse]
     confirmations: int
     fee: Satoshi
-    coinbase: bool
-    coinstake: bool
+    coinbase: bool = Field(False)
+    coinstake: bool = Field(False)
 
 
 TransactionPaginatedResponse = PaginatedResponse[TransactionResponse]
