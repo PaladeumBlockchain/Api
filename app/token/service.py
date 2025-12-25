@@ -23,7 +23,6 @@ async def list_tokens(session: AsyncSession, offset: int, limit: int):
         .order_by(Token.height.asc())
     )
 
-    # Little shenanigan to set attribute in comprehension
     result: list[Token] = []
     for token in items:
         setattr(token, "icon", get_token_icon(token.name))
