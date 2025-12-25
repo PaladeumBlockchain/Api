@@ -23,10 +23,19 @@ async def list_tokens(session: AsyncSession, offset: int, limit: int):
         .order_by(Token.height.asc())
     )
 
-    # Little shenanigan to set attribute in comprehension
-    return [
-        setattr(token, "icon", get_token_icon(token.name)) or token for token in items
-    ]
+    result: list[Token] = []
+    for token in items:
+        setattr(token, "icon", get_token_icon(token.name))
+
+        holders = await session.scalar(
+            select(func.count(AddressBalance.id)).filter(
+                AddressBalance.currency == token.name, AddressBalance.balance > 0
+            )
+        )
+        setattr(token, "holders", holders)
+        result.append(token)
+
+    return result
 
 
 async def list_token_names(session: AsyncSession):

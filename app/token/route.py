@@ -2,10 +2,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
 
 
-from .schemas import FullTokenResponse, TokenResponse
 from app.utils import paginated_response, pagination
 from .dependencies import require_full_token
 from app.schemas import PaginatedResponse
+from .schemas import FullTokenResponse
 from app.dependencies import get_page
 from app.database import get_session
 from app.models import Token
@@ -15,7 +15,7 @@ from . import service
 router = APIRouter(prefix="/token", tags=["Tokens"])
 
 
-@router.get("/list", response_model=PaginatedResponse[TokenResponse])
+@router.get("/list", response_model=PaginatedResponse[FullTokenResponse])
 async def list_tokens(
     page: int = Depends(get_page), session: AsyncSession = Depends(get_session)
 ):

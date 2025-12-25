@@ -1,4 +1,5 @@
 from decimal import Decimal
+import typing
 
 from app.models import Transaction, Output, Input, Block, Token, MemPool
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,8 @@ from app.blocks.service import get_latest_block
 from sqlalchemy import select, Select, func
 from app.parser import make_request
 from app import get_settings
+
+S = typing.TypeVar("S", bound=tuple[typing.Any, ...])
 
 
 async def get_token_units(session: AsyncSession, currency: str) -> int:
@@ -20,6 +23,14 @@ async def get_token_units(session: AsyncSession, currency: str) -> int:
     return token.units
 
 
+@typing.overload
+async def load_tx_details(
+    session: AsyncSession, transaction: None, latest_block: Block | None = None
+) -> None: ...
+@typing.overload
+async def load_tx_details(
+    session: AsyncSession, transaction: Transaction, latest_block: Block | None = None
+) -> Transaction: ...
 async def load_tx_details(
     session: AsyncSession,
     transaction: Transaction | None,
@@ -68,20 +79,25 @@ async def load_tx_details(
     return transaction
 
 
-async def get_transaction_by_txid(session: AsyncSession, txid: str) -> Transaction:
+async def get_transaction_by_txid(
+    session: AsyncSession, txid: str
+) -> Transaction | None:
     return await load_tx_details(
         session,
         await session.scalar(select(Transaction).filter(Transaction.txid == txid)),
     )
 
 
-def transactions_filter(query: Select, currency: str) -> Select:
+def transactions_filter(query: Select[S], currency: str) -> Select[S]:
     return query.filter(Transaction.currencies.contains([currency.upper()]))
 
 
 async def count_transactions(session: AsyncSession, currency: str) -> int:
-    return await session.scalar(
-        transactions_filter(select(func.count(Transaction.id)), currency)
+    return (
+        await session.scalar(
+            transactions_filter(select(func.count(Transaction.id)), currency)
+        )
+        or 0
     )
 
 
@@ -90,7 +106,7 @@ async def get_transactions(
 ) -> list[Transaction]:
     latest_block = await get_latest_block(session)
 
-    transactions = []
+    transactions: list[Transaction] = []
     for transaction in await session.scalars(
         transactions_filter(
             select(Transaction)
@@ -117,11 +133,13 @@ async def broadcast_transaction(raw: str):
 
 
 async def load_mempool_tx_details(
-    session: AsyncSession, transaction: dict, mempool_outputs: dict[str, dict]
-) -> dict | None:
+    session: AsyncSession,
+    transaction: dict[str, typing.Any],
+    mempool_outputs: dict[str, dict[str, typing.Any]],
+) -> dict[str, typing.Any]:
     transaction["height"] = None
     transaction["confirmations"] = 0
-    transaction["amount"] = {}
+    transaction["amount"] = dict[str, typing.Any]()
     transaction["fee"] = Decimal(0)
 
     # Mempool transactions doesn't have these fields
@@ -148,9 +166,12 @@ async def load_mempool_tx_details(
             input_["address"] = output["address"]
 
         else:
-            output_: Output = await session.scalar(
+            output_ = await session.scalar(
                 select(Output).filter(Output.shortcut == input_["shortcut"])
             )
+            if output_ is None:
+                print("load_mempool_tx_details: Output not found ", input_["shortcut"])
+                continue
 
             input_["amount"] = output_.amount
             input_["units"] = await get_token_units(session, output_.currency)
@@ -163,7 +184,9 @@ async def load_mempool_tx_details(
     return transaction
 
 
-async def get_mempool_transactions(session: AsyncSession) -> list[dict]:
+async def get_mempool_transactions(
+    session: AsyncSession,
+) -> list[dict[str, typing.Any]]:
     mempool = await session.scalar(select(MemPool).limit(1))
 
     if mempool is None:
