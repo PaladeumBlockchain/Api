@@ -19,7 +19,7 @@ router = APIRouter(prefix="/token", tags=["Tokens"])
 async def list_tokens(
     page: int = Depends(get_page), session: AsyncSession = Depends(get_session)
 ):
-    limit, offset = pagination(page)
+    limit, offset = pagination(page, size=100)
 
     total = await service.count_tokens(session)
     items = await service.list_tokens(session, offset, limit)
