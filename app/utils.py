@@ -80,5 +80,8 @@ def get_token_icon(name: str):
         case "RCT":
             return f"https://apiv2.paladeum.io/static/RCT.png?{cache_fix}"
 
+        case "RCT21":
+            return f"https://apiv2.paladeum.io/static/RCT21.png?{cache_fix}"
+
         case _:
             return None
