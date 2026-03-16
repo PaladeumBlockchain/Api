@@ -1,5 +1,0 @@
-ROOT = 0
-SUB = 1
-UNIQUE = 2
-OWNER = 3
-USERNAME = 4
