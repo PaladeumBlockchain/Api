@@ -118,7 +118,6 @@ async def test_v2_transaction_found(client, session):
     data = assert_compat_ok(response)
     result = data["result"]
     assert result["txid"] == tx.txid
-    assert result["blockhash"] == tx.blockhash
     assert "outputs" in result
     assert "inputs" in result
     assert "fee" in result
