@@ -43,7 +43,9 @@ async def load_tx_details(
     if latest_block is None:
         latest_block = await get_latest_block(session)
 
-    transaction.confirmations = latest_block.height - transaction.height
+    transaction.confirmations = (
+        latest_block.height - transaction.height if latest_block else 0
+    )
 
     output_shortcuts: dict[str, Output] = {}
 

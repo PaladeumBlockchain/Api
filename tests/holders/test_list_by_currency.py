@@ -22,8 +22,7 @@ async def test_list_no_address(
     total_balance = Decimal(sum(b.balance for b in addresses_balances))
 
     for item in response.json()["list"]:
-        assert item["percentage"] == float(
-            Decimal(str(item["balance"])) / total_balance * 100
-        )
-        assert item["balance"] == index[item["address"]].balance
+        holder = index[item["address"]]
+        assert item["balance"] == int(float(holder.balance) * 10**8)
+        assert item["percentage"] == float(holder.balance / total_balance * 100)
         assert item["txcount"] == 0
