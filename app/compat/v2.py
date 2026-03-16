@@ -48,8 +48,6 @@ def _tx_v2_shape(tx) -> dict:
             "amount": float(o.amount),
             "category": o.type,
             "spent": o.spent,
-            "index": o.index,
-            "vin": None,
         }
         for o in getattr(tx, "outputs", [])
     ]
@@ -64,18 +62,17 @@ def _tx_v2_shape(tx) -> dict:
     ]
 
     return {
-        "txid": tx.txid,
-        "blockhash": tx.blockhash,
-        "height": tx.height,
         "confirmations": getattr(tx, "confirmations", 0),
-        "timestamp": tx.timestamp,
         "fee": float(tx.fee),
+        "timestamp": tx.timestamp,
         "amount": float(sum(tx.amount.values())) if tx.amount else 0.0,
         "coinstake": getattr(tx, "coinstake", False),
+        "height": tx.height,
         "coinbase": tx.coinbase,
+        "txid": tx.txid,
         "size": tx.size,
-        "mempool": False,
         "outputs": outputs,
+        "mempool": False,
         "inputs": inputs,
     }
 
@@ -258,10 +255,10 @@ async def get_token(
         return JSONResponse(status_code=404, content=compat_error("Token not found"))
     return compat_response(
         {
-            "name": tok.name,
-            "amount": str(tok.amount),
             "reissuable": tok.reissuable,
+            "amount": tok.amount,
             "units": tok.units,
+            "name": tok.name,
             "total": None,
         }
     )

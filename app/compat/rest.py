@@ -34,14 +34,44 @@ def _block_shape(block) -> dict:
     }
 
 
+def _reward(height: int) -> int:
+    halvings = height // 525960
+    if halvings >= 10:
+        return 0
+    return int(4 * 10**8 // (2**halvings))
+
+
 @router.get("/info")
 async def get_info():
     settings = get_settings()
+    endpoint = settings.blockchain.endpoint
+
     result = await make_request(
-        settings.blockchain.endpoint,
-        {"id": "info", "method": "getblockchaininfo", "params": []},
+        endpoint, {"id": "info", "method": "getblockchaininfo", "params": []}
     )
-    return compat_response(result.get("result"))
+    data = result.get("result") or {}
+
+    for key in ("verificationprogress", "pruned", "softforks", "bip9_softforks", "warnings", "size_on_disk"):
+        data.pop(key, None)
+
+    height = data.get("blocks", 0)
+    data["reward"] = _reward(height)
+    data["mempool"] = 0
+    data["nethash"] = None
+
+    mempool_info = await make_request(
+        endpoint, {"id": "mempool", "method": "getmempoolinfo", "params": []}
+    )
+    if not mempool_info.get("error"):
+        data["mempool"] = mempool_info.get("result", {}).get("size", 0)
+
+    nethash = await make_request(
+        endpoint, {"id": "nethash", "method": "getnetworkhashps", "params": [120, height]}
+    )
+    if not nethash.get("error"):
+        data["nethash"] = int(nethash.get("result", 0))
+
+    return compat_response(data)
 
 
 @router.get("/height/{height}")
@@ -138,11 +168,11 @@ async def get_balance(
     ]
     return compat_response(
         {
+            "received": float(plb.balance + plb.locked) if plb else 0.0,
             "balance": float(plb.balance) if plb else 0.0,
             "locked": float(plb.locked) if plb else 0.0,
-            "received": float(plb.balance + plb.locked) if plb else 0.0,
             "tokens": tokens,
-            "total": len(balances),
+            "total": len(tokens),
         }
     )
 
@@ -243,25 +273,32 @@ async def decode_transaction(raw: str):
 
 @router.get("/fee")
 async def get_fee():
-    settings = get_settings()
-    result = await make_request(
-        settings.blockchain.endpoint,
-        {"id": "fee", "method": "estimatesmartfee", "params": [6]},
-    )
-    data = result.get("result", {})
-    return compat_response({"feerate": data.get("feerate"), "blocks": 6})
+    return compat_response({"feerate": int(0.01 * 10**8), "blocks": 6})
+
+
+def _supply(height: int) -> dict:
+    reward = int(4 * 10**8)
+    halvings_period = 525960
+    halvings_count = 0
+    supply = reward
+
+    while height > halvings_period:
+        supply += halvings_period * reward
+        reward = reward // 2
+        height -= halvings_period
+        halvings_count += 1
+
+    supply += height * reward
+    return {"halvings": halvings_count, "supply": supply}
 
 
 @router.get("/supply")
 async def get_supply(session: AsyncSession = Depends(get_session)):
     latest = await blocks_service.get_latest_block(session)
-    return compat_response(
-        {
-            "supply": 1_000_000_000,
-            "height": latest.height if latest else 0,
-            "halvings": None,
-        }
-    )
+    height = latest.height if latest else 0
+    result = _supply(height)
+    result["height"] = height
+    return compat_response(result)
 
 
 @router.get("/tokens")
@@ -276,10 +313,9 @@ async def get_tokens(
         {
             t.name: {
                 "name": t.name,
-                "amount": str(t.amount),
+                "amount": t.amount,
                 "reissuable": t.reissuable,
                 "units": t.units,
-                "holders": t.holders,
             }
             for t in items
         }

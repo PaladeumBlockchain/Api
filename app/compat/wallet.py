@@ -29,7 +29,6 @@ def _tx_wallet_shape(tx) -> dict:
             "category": o.type,
             "units": getattr(o, "units", 8),
             "spent": o.spent,
-            "index": o.index,
         }
         for o in getattr(tx, "outputs", [])
     ]
