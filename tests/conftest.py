@@ -1,21 +1,19 @@
 # Based on https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
 # https://github.com/gpkc/fastapi-sqlalchemy-pytest
 
-from contextlib import ExitStack
-import asyncio
-
-from pytest_postgresql.janitor import DatabaseJanitor
-from async_asgi_testclient import TestClient
-from pytest_postgresql import factories
-from sqlalchemy import make_url, delete
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.database import sessionmanager, get_session
-from app.settings import get_settings
 from app.models import Base, Transaction, Block, Address, Output
+from pytest_postgresql.janitor import DatabaseJanitor
+from app.database import sessionmanager, get_session
+from sqlalchemy.ext.asyncio import AsyncSession
+from async_asgi_testclient import TestClient
+from sqlalchemy import make_url, delete
+from pytest_postgresql import factories
+from app.settings import get_settings
+from contextlib import ExitStack
 from app import create_app
 from tests import helpers
+import asyncio
+import pytest
 
 # This is needed to obtain PostgreSQL version
 test_db = factories.postgresql_proc()
@@ -128,6 +126,12 @@ async def address_utxo(session, address) -> Output:
 @pytest.fixture
 async def address_transaction(session, address) -> Transaction:
     return await helpers.create_transaction(session, addresses=[address.address])
+
+
+@pytest.fixture
+async def mempool_transaction(session):
+    _, transaction = await helpers.create_mempool_transaction(session)
+    return transaction
 
 
 @pytest.fixture

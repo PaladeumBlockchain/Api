@@ -1,4 +1,5 @@
 from app.utils import pagination, paginated_response
+from .schemas import AddressTransactionsMultiArgs
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
 from app.dependencies import get_page
@@ -15,7 +16,27 @@ from app.schemas import (
 router = APIRouter(prefix="/address", tags=["Addresses"])
 
 
-@router.get("/{address}/outputs/{currency}", response_model=OutputPaginatedResponse)
+@router.post("/transactions", response_model=TransactionPaginatedResponse)
+async def list_transactions_multi(
+    args: AddressTransactionsMultiArgs,
+    session: AsyncSession = Depends(get_session),
+    page: int = Depends(get_page),
+):
+    limit, offset = pagination(page)
+
+    total = await service.count_transactions_multi(
+        session, args.addresses, args.currency
+    )
+    items = await service.list_transactions_multi(
+        session, args.addresses, args.currency, limit, offset
+    )
+
+    return paginated_response(items, total, page, limit)
+
+
+@router.get(
+    "/{address}/outputs/{currency}", response_model=OutputPaginatedResponse
+)
 async def get_unspent_outputs(
     address: str,
     currency: str,
@@ -47,12 +68,16 @@ async def get_utxo(
     limit, offset = pagination(page)
 
     total = await service.count_utxo(session, address, currency, amount)
-    items = await service.list_utxo(session, address, currency, amount, limit, offset)
+    items = await service.list_utxo(
+        session, address, currency, amount, limit, offset
+    )
 
     return paginated_response(items.all(), total, page, limit)
 
 
-@router.get("/{address}/transactions", response_model=TransactionPaginatedResponse)
+@router.get(
+    "/{address}/transactions", response_model=TransactionPaginatedResponse
+)
 async def get_transactions(
     address: str,
     session: AsyncSession = Depends(get_session),
@@ -67,7 +92,8 @@ async def get_transactions(
 
 
 @router.get(
-    "/{address}/transactions/{ticker}", response_model=TransactionPaginatedResponse
+    "/{address}/transactions/{ticker}",
+    response_model=TransactionPaginatedResponse,
 )
 async def list_transactions_ticker(
     address: str,
@@ -78,7 +104,9 @@ async def list_transactions_ticker(
     limit, offset = pagination(page)
 
     total = await service.count_transactions(session, address, ticker)
-    items = await service.list_transactions(session, address, limit, offset, ticker)
+    items = await service.list_transactions(
+        session, address, limit, offset, ticker
+    )
 
     return paginated_response(items, total, page, limit)
 

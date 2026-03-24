@@ -1,12 +1,11 @@
-from decimal import Decimal
-import typing
-
 from app.models import Transaction, Output, Input, Block, Token, MemPool
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.blocks.service import get_latest_block
 from sqlalchemy import select, Select, func
 from app.parser import make_request
 from app import get_settings
+from decimal import Decimal
+import typing
 
 S = typing.TypeVar("S", bound=tuple[typing.Any, ...])
 
@@ -184,6 +183,26 @@ async def load_mempool_tx_details(
             transaction["fee"] += input_["amount"]
 
     return transaction
+
+
+async def get_mempool_transaction_by_txid(
+    session: AsyncSession,
+    txid: str,
+) -> dict[str, typing.Any] | None:
+    mempool = await session.scalar(select(MemPool).limit(1))
+
+    if mempool is None:
+        return None
+
+    transaction = next(
+        (tx for tx in mempool.raw["transactions"] if tx["txid"] == txid),
+        None,
+    )
+
+    if transaction is None:
+        return None
+
+    return await load_mempool_tx_details(session, transaction, mempool.raw["outputs"])
 
 
 async def get_mempool_transactions(
