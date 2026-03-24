@@ -5,6 +5,9 @@ import math
 
 from app import constants
 
+Limit = typing.NewType("Limit", int)
+Offset = typing.NewType("Offset", int)
+
 
 def utcnow():
     return datetime.now(UTC).replace(tzinfo=None)
@@ -29,11 +32,13 @@ def token_type(name: str):
 
 
 # Helper function for pagination
-def pagination(page: int, size: int = constants.DEFAULT_PAGINATION_SIZE):
+def pagination(
+    page: int, size: int = constants.DEFAULT_PAGINATION_SIZE
+) -> tuple[Limit, Offset]:
     """limit, offset = pagination(:page, :page_size)"""
     offset = (size * page) - size
 
-    return size, offset
+    return size, offset  # type: ignore
 
 
 # Helper function to make pagination dict for api

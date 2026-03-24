@@ -41,3 +41,19 @@ async def get_address_balances(
     client: TestClient, address: str, page: int = 1
 ) -> Response:
     return await client.get(f"/address/{address}/balances", query_string={"page": page})
+
+
+async def post_address_transactions_multi(
+    client: TestClient,
+    addresses: list[str],
+    currency: str | None = None,
+    page: int = 1,
+) -> Response:
+    body = {"addresses": addresses}
+    if currency is not None:
+        body["currency"] = currency
+    return await client.post(
+        "/address/transactions",
+        json=body,
+        query_string={"page": page},
+    )

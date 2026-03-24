@@ -1,11 +1,10 @@
-from decimal import Decimal
-import random
-import secrets
-
+from app.models import AddressBalance, Transaction, Block, Address, Output, MemPool
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import AddressBalance, Transaction, Block, Address, Output
 from app.utils import utcnow, to_timestamp
+from sqlalchemy import select
+from decimal import Decimal
+import secrets
+import random
 
 
 async def create_transaction(
@@ -147,3 +146,53 @@ async def create_address_balance(
     await session.commit()
 
     return address_balance
+
+
+async def create_mempool_transaction(
+    session: AsyncSession,
+    txid: str = None,
+    address: str = None,
+    amount: float = 10.0,
+    currency: str = "PLB",
+) -> tuple[MemPool, dict]:
+    txid = txid or secrets.token_hex(32)
+    address = address or secrets.token_hex(32)
+    shortcut = f"{txid}:0"
+
+    output = {
+        "txid": txid,
+        "shortcut": shortcut,
+        "address": address,
+        "amount": amount,
+        "currency": currency,
+        "timelock": 0,
+        "type": "pubkeyhash",
+        "spent": False,
+        "script": "",
+        "asm": "",
+        "index": 0,
+    }
+
+    transaction = {
+        "txid": txid,
+        "blockhash": None,
+        "timestamp": None,
+        "addresses": [address],
+        "outputs": [output],
+        "inputs": [],
+    }
+
+    mempool = await session.scalar(select(MemPool).limit(1))
+
+    if mempool is None:
+        mempool = MemPool(raw={"transactions": [], "outputs": {}})
+        session.add(mempool)
+
+    raw = dict(mempool.raw)
+    raw["transactions"] = list(raw.get("transactions", [])) + [transaction]
+    raw["outputs"] = {**raw.get("outputs", {}), shortcut: output}
+    mempool.raw = raw
+
+    await session.commit()
+
+    return mempool, transaction
