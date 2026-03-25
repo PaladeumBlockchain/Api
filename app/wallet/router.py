@@ -17,5 +17,5 @@ async def check_addresses(
 
 
 @router.get("/info", response_model=WalletInfoResponse)
-async def get_wallet_info():
-    return await service.get_wallet_info()
+async def get_wallet_info(session: AsyncSession = Depends(get_session)):
+    return await service.get_wallet_info(session)
