@@ -15,7 +15,7 @@ errors = {
     "blocks": {"not-found": ("Block not found", 404)},
     "token": {"not-found": ("Token not found", 404)},
     "wallet": {
-        "inaccessible-node": ["Cannot connect to the node", 502],
+        "not-synchronized": ("Not synchronized", 400),
     },
 }
 
