@@ -14,6 +14,9 @@ errors = {
     "transactions": {"not-found": ("Transaction not found", 404)},
     "blocks": {"not-found": ("Block not found", 404)},
     "token": {"not-found": ("Token not found", 404)},
+    "wallet": {
+        "inaccessible-node": ["Cannot connect to the node", 502],
+    },
 }
 
 
@@ -33,7 +36,9 @@ def abort_handler(_: Request, exception: Abort | Exception) -> JSONResponse:
     error_message = errors.get(exception.scope, {}).get(
         exception.message, ("Unknown error",)
     )[0]
-    status_code = errors.get(exception.scope, {}).get(exception.message, (None, 400))[1]
+    status_code = errors.get(exception.scope, {}).get(
+        exception.message, (None, 400)
+    )[1]
 
     return JSONResponse(
         status_code=status_code,
