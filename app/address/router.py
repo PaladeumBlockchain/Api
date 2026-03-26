@@ -1,5 +1,4 @@
 from app.utils import pagination, paginated_response
-from .schemas import AddressTransactionsMultiArgs
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
 from app.dependencies import get_page
@@ -11,6 +10,10 @@ from app.schemas import (
     OutputPaginatedResponse,
     TransactionResponse,
     BalanceResponse,
+)
+from .schemas import (
+    AddressTransactionsMultiMempoolArgs,
+    AddressTransactionsMultiArgs,
 )
 
 router = APIRouter(prefix="/address", tags=["Addresses"])
@@ -29,6 +32,26 @@ async def list_transactions_multi(
     )
     items = await service.list_transactions_multi(
         session, args.addresses, args.currency, limit, offset
+    )
+
+    return paginated_response(items, total, page, limit)
+
+
+@router.post(
+    "/transactions/mempool", response_model=TransactionPaginatedResponse
+)
+async def list_transactions_multi_mempool(
+    args: AddressTransactionsMultiMempoolArgs,
+    session: AsyncSession = Depends(get_session),
+    page: int = Depends(get_page),
+):
+    limit, offset = pagination(page)
+
+    total = await service.count_transactions_multi_mempool(
+        session, args.addresses
+    )
+    items = await service.list_transactions_multi_mempool(
+        session, args.addresses, limit, offset
     )
 
     return paginated_response(items, total, page, limit)

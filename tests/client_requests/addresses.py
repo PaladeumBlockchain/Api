@@ -57,3 +57,15 @@ async def post_address_transactions_multi(
         json=body,
         query_string={"page": page},
     )
+
+
+async def post_address_transactions_multi_mempool(
+    client: TestClient,
+    addresses: list[str],
+    page: int = 1,
+) -> Response:
+    return await client.post(
+        "/address/transactions/mempool",
+        json={"addresses": addresses},
+        query_string={"page": page},
+    )
