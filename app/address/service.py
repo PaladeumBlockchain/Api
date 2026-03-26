@@ -1,6 +1,6 @@
 import typing
 
-from sqlalchemy import Select, select, func, ScalarResult
+from sqlalchemy import Select, select, func, ScalarResult, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Output, Transaction, AddressBalance, Address, MemPool
@@ -144,6 +144,20 @@ async def count_transactions_multi(
     )
 
 
+async def count_transactions_multi_mempool(
+    session: AsyncSession, addresses: list[str]
+) -> int:
+    return await session.scalar(
+        text("""
+        SELECT COUNT(1)
+        FROM service_mempool,
+            jsonb_array_elements(raw->'transactions') AS tx
+        WHERE tx->'addresses' ?| :addresses
+    """),
+        {"addresses": addresses},
+    )
+
+
 async def list_transactions(
     session: AsyncSession,
     address: str,
@@ -192,6 +206,35 @@ async def list_transactions_multi(
         transactions.append(
             await load_tx_details(session, transaction, latest_block)
         )
+
+    return transactions
+
+
+async def list_transactions_multi_mempool(
+    session: AsyncSession,
+    addresses: list[str],
+    limit: int,
+    offset: int,
+) -> list[dict[str, typing.Any]]:
+    stmt = text("""
+        SELECT tx
+        FROM service_mempool,
+            jsonb_array_elements(raw->'transactions') AS tx
+        WHERE tx->'addresses' ?| :addresses
+        ORDER BY (tx->>'created')::bigint DESC
+        OFFSET :offset
+        LIMIT :limit
+    """)
+
+    txs = await session.scalars(
+        stmt, {"addresses": addresses, "limit": limit, "offset": offset}
+    )
+    outputs = await session.scalar(select(MemPool.raw.op("->")("outputs")))
+    assert outputs is not None
+
+    transactions: list[dict[str, typing.Any]] = [
+        await load_mempool_tx_details(session, tx, outputs) for tx in txs
+    ]
 
     return transactions
 
