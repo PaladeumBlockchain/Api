@@ -12,6 +12,7 @@ class Resolution(str, Enum):
 
 class ChartGeneralEntry(CustomModel):
     timestamp: int
+    resolution: Resolution
     transactions: int
     addresses: int
     tokens: int

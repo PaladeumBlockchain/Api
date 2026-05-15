@@ -41,9 +41,10 @@ def _bucket_expr(trunc: str) -> str:
     )
 
 
-def _empty_entry(bucket: int) -> dict[str, typing.Any]:
+def _empty_entry(bucket: int, resolution: Resolution) -> dict[str, typing.Any]:
     return {
         "timestamp": bucket,
+        "resolution": resolution,
         "transactions": 0,
         "addresses": 0,
         "tokens": 0,
@@ -135,7 +136,7 @@ async def get_general_chart(
 
     def ensure(bucket: int) -> dict[str, typing.Any]:
         if bucket not in buckets:
-            buckets[bucket] = _empty_entry(bucket)
+            buckets[bucket] = _empty_entry(bucket, resolution)
         return buckets[bucket]
 
     for row in tx_rows:
@@ -155,4 +156,4 @@ async def get_general_chart(
     for row in block_rows:
         ensure(row.bucket)["blocks"] = row.count
 
-    return [buckets[bucket] for bucket in sorted(buckets)]
+    return [buckets[bucket] for bucket in sorted(buckets, reverse=True)]
