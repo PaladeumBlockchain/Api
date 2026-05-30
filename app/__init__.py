@@ -24,7 +24,9 @@ def create_app(init_db: bool = True) -> FastAPI:
             with suppress(Exception):
                 await sessionmanager.close()
 
-    fu.validation_error_response_definition = errors.ErrorResponse.model_json_schema()
+    fu.validation_error_response_definition = (
+        errors.ErrorResponse.model_json_schema()
+    )
 
     app = FastAPI(
         title="API Docs",
@@ -39,7 +41,6 @@ def create_app(init_db: bool = True) -> FastAPI:
             {"name": "Tokens"},
             {"name": "General"},
             {"name": "Chart"},
-            {"name": "Compat"},
         ],
     )
 
@@ -71,7 +72,6 @@ def create_app(init_db: bool = True) -> FastAPI:
     from .holders import router as holders_router
     from .token import router as token_router
     from .chart import router as chart_router
-    from .compat import router as compat_router
 
     app.include_router(token_router)
     app.include_router(holders_router)
@@ -81,7 +81,6 @@ def create_app(init_db: bool = True) -> FastAPI:
     app.include_router(wallet_router)
     app.include_router(db_router)
     app.include_router(chart_router)
-    app.include_router(compat_router)
 
     @app.get("/ping")
     async def ping_pong():
