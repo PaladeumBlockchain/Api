@@ -9,7 +9,7 @@ Limit = typing.NewType("Limit", int)
 Offset = typing.NewType("Offset", int)
 
 
-def utcnow():
+def utcnow() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 

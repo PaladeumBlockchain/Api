@@ -1,9 +1,10 @@
 import typing
 
-from sqlalchemy import Select, select, func, ScalarResult, text
+from sqlalchemy import Select, select, func, ScalarResult, text, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Output, Transaction, AddressBalance, Address, MemPool
+from app.constants import TIMELOCK_TIMESTAMP_TRESHOLD
 from app.blocks.service import get_latest_block
 
 from app.transactions.service import (
@@ -15,22 +16,31 @@ from app.transactions.service import (
 S = typing.TypeVar("S", bound=tuple[typing.Any, ...])
 
 
-def unspent_outputs_filters(query: Select, address: str, currency) -> Select:
+def unspent_outputs_filters(
+    query: Select[S], address: str, currency: str, height: int, time: int
+) -> Select[S]:
     query = query.filter(
         Output.address == address,
         func.lower(Output.currency) == currency.lower(),
         ~Output.spent,
+        or_(
+            and_(
+                Output.timelock < TIMELOCK_TIMESTAMP_TRESHOLD,
+                Output.timelock < height,
+            ),
+            Output.timelock < time,
+        ),
     )
 
     return query
 
 
 async def count_unspent_outputs(
-    session: AsyncSession, address: str, currency: str
+    session: AsyncSession, address: str, currency: str, height: int, time: int
 ) -> int:
     return await session.scalar(
         unspent_outputs_filters(
-            select(func.count(Output.id)), address, currency
+            select(func.count(Output.id)), address, currency, height, time
         )
     )
 
@@ -39,6 +49,8 @@ async def list_unspent_outputs(
     session: AsyncSession,
     address: str,
     currency: str,
+    height: int,
+    time: int,
     limit: int,
     offset: int,
 ) -> ScalarResult[Output]:
@@ -50,11 +62,13 @@ async def list_unspent_outputs(
             .offset(offset),
             address,
             currency,
+            height,
+            time,
         )
     )
 
 
-def utxo_cte(address: str, currency: str):
+def utxo_cte(address: str, currency: str, height: int, time: int):
     return (
         select(
             Output,
@@ -66,15 +80,27 @@ def utxo_cte(address: str, currency: str):
             Output.address == address,
             Output.currency == currency,
             ~Output.spent,
+            or_(
+                and_(
+                    Output.timelock < TIMELOCK_TIMESTAMP_TRESHOLD,
+                    Output.timelock < height,
+                ),
+                Output.timelock < time,
+            ),
         )
         .cte("cumulative_outputs")
     )
 
 
 async def count_utxo(
-    session: AsyncSession, address: str, currency: str, amount: float
+    session: AsyncSession,
+    address: str,
+    currency: str,
+    amount: float,
+    height: int,
+    time: int,
 ) -> int:
-    cte = utxo_cte(address, currency)
+    cte = utxo_cte(address, currency, height, time)
     query = (
         select(func.count(1))
         .select_from(cte)
@@ -88,10 +114,12 @@ async def list_utxo(
     address: str,
     currency: str,
     amount: float,
+    height: int,
+    time: int,
     limit: int,
     offset: int,
 ):
-    cte = utxo_cte(address, currency)
+    cte = utxo_cte(address, currency, height, time)
     query = (
         select(cte)
         .select_from(cte)

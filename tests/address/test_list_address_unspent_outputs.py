@@ -1,8 +1,21 @@
+from app.utils import to_satoshi, utcnow, to_timestamp
+from sqlalchemy.ext.asyncio import AsyncSession
 from tests.client_requests import addresses
-from app.utils import to_satoshi
+from datetime import timedelta
+from app.models import Output
+from tests import helpers
 
 
-async def test_normal(client, address_utxo):
+async def test_normal(client, address_utxo: Output, session: AsyncSession):
+    # Create locked output
+    await helpers.create_output(
+        session,
+        address=address_utxo.address,
+        txid="address txid",
+        amount=100,
+        timelock=to_timestamp(utcnow() + timedelta(seconds=300)),
+        shortcut="pecpecpec",
+    )
     response = await addresses.get_unspent_address_outputs(
         client, address_utxo.address, "PLB"
     )

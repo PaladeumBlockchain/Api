@@ -1,13 +1,18 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from async_asgi_testclient import TestClient
-from tests.client_requests import addresses
-from app.models.output import Output
-from app.utils import to_satoshi
-from tests import helpers
+from datetime import timedelta
 import secrets
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from async_asgi_testclient import TestClient
 
-async def test_default(client: TestClient, address_utxo: Output, session: AsyncSession):
+from app.utils import to_satoshi, to_timestamp, utcnow
+from tests.client_requests import addresses
+from app.models.output import Output
+from tests import helpers
+
+
+async def test_default(
+    client: TestClient, address_utxo: Output, session: AsyncSession
+):
     extra_amount = 100
 
     utxo1 = await helpers.create_output(
@@ -17,6 +22,18 @@ async def test_default(client: TestClient, address_utxo: Output, session: AsyncS
         spent=False,
         shortcut=secrets.token_hex(16),
         amount=123,
+    )
+
+    # Create locked output
+    await helpers.create_output(
+        session,
+        address_utxo.currency,
+        address=address_utxo.address,
+        spent=False,
+        shortcut="pecpecpec",
+        amount=10,
+        txid="address txid",
+        timelock=to_timestamp(utcnow() + timedelta(seconds=300)),
     )
 
     required_amount = address_utxo.amount + utxo1.amount + extra_amount
@@ -43,7 +60,9 @@ async def test_default(client: TestClient, address_utxo: Output, session: AsyncS
 
 
 async def test_none(client, address):
-    response = await addresses.get_address_utxo(client, address.address, 1, "PLB")
+    response = await addresses.get_address_utxo(
+        client, address.address, 1, "PLB"
+    )
     print(response.json())
     assert response.status_code == 200
 
