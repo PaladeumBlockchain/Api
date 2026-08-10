@@ -1,6 +1,8 @@
-from app.utils import pagination, paginated_response
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends
+
+from app.utils import pagination, paginated_response, utcnow, to_timestamp
+from app.blocks.service import get_latest_block
 from app.dependencies import get_page
 from app.database import get_session
 from app.address import service
@@ -68,9 +70,15 @@ async def get_unspent_outputs(
 ):
     limit, offset = pagination(page)
 
-    total = await service.count_unspent_outputs(session, address, currency)
+    block = await get_latest_block(session)
+    height = block.height if block is not None else 0
+    now = to_timestamp(utcnow())
+
+    total = await service.count_unspent_outputs(
+        session, address, currency, height, now
+    )
     items = await service.list_unspent_outputs(
-        session, address, currency, limit, offset
+        session, address, currency, height, now, limit, offset
     )
 
     return paginated_response(items.all(), total, page, limit)
@@ -90,9 +98,15 @@ async def get_utxo(
 ):
     limit, offset = pagination(page)
 
-    total = await service.count_utxo(session, address, currency, amount)
+    block = await get_latest_block(session)
+    height = block.height if block is not None else 0
+    now = to_timestamp(utcnow())
+
+    total = await service.count_utxo(
+        session, address, currency, amount, height, now
+    )
     items = await service.list_utxo(
-        session, address, currency, amount, limit, offset
+        session, address, currency, amount, height, now, limit, offset
     )
 
     return paginated_response(items.all(), total, page, limit)
